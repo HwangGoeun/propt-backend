@@ -80,6 +80,8 @@ describe('TemplateService', () => {
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe('template_1');
       expect(result[0].description).toBe('Description 1');
+      expect(result[0]).toHaveProperty('variables');
+      expect(Array.isArray(result[0].variables)).toBe(true);
       expect(result[1].id).toBe('template_2');
       expect(result[1].description).toBeUndefined();
 
@@ -155,6 +157,8 @@ describe('TemplateService', () => {
 
       expect(result.id).toBe('tpl_1');
       expect(result.title).toBe('Test Template');
+      expect(result).toHaveProperty('variables');
+      expect(Array.isArray(result.variables)).toBe(true);
     });
 
     it('should throw NotFoundException if template does not exist', async () => {

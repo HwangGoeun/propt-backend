@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Template } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TemplateResponseDto } from './dto/template-response.dto';
 import { TemplateVariableDto } from './dto/template-variable.dto';
@@ -21,15 +22,7 @@ export class TemplateService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return templates.map((template) => ({
-      id: template.id,
-      title: template.title,
-      description: template.description ?? undefined,
-      content: template.content,
-      variables: template.variable as unknown as TemplateVariableDto[],
-      createdAt: template.createdAt,
-      updatedAt: template.updatedAt,
-    }));
+    return templates.map((template) => this.toResponseDto(template));
   }
 
   async findOneById(id: string, userId: string): Promise<TemplateResponseDto> {
@@ -53,6 +46,13 @@ export class TemplateService {
       throw new ForbiddenException('You do not have access to this template');
     }
 
+    return this.toResponseDto(template);
+  }
+
+  /**
+   * Prisma Entity -> DTO 변환
+   */
+  private toResponseDto(template: Template): TemplateResponseDto {
     return {
       id: template.id,
       title: template.title,
