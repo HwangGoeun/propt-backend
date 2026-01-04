@@ -3,6 +3,11 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
+  console.log('Deleting existing data...');
+  await prisma.template.deleteMany({});
+  await prisma.user.deleteMany({});
+  console.log('Existing data deleted successfully');
+
   /**
    * 테스트 사용자
    */
@@ -45,19 +50,15 @@ async function main() {
   });
 
   /**
-   * 템플릿 3: 이메일 작성
+   * 템플릿 3: 이메일 작성 예시
    */
   await prisma.template.create({
     data: {
       creatorId: user.id,
       title: '이메일 작성',
-      description: '비즈니스 이메일 자동 생성',
-      content: '{recipient}님께 보낼 {purpose} 관련 이메일을 {tone} 톤으로 작성해주세요',
-      variable: [
-        { name: 'recipient', type: 'text' },
-        { name: 'purpose', type: 'text' },
-        { name: 'tone', type: 'text' },
-      ],
+      description: null,
+      content: '비즈니스 이메일 예시를 보여주세요.',
+      variable: [],
     },
   });
 
