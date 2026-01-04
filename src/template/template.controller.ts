@@ -16,26 +16,10 @@ export class TemplateController {
   }
 
   @Get(':id')
-  findOne(
+  async findOne(
     @CurrentUser('userId') userId: string,
-    @Param() Param: GetTemplateParamDto,
-  ): TemplateResponseDto {
-    console.log('User ID:', userId);
-
-    return {
-      id: Param.id,
-      title: `Mock Template ${Param.id}`,
-      description: `This is a mock response ${Param.id}`,
-      content: 'Mock content: {keyword}',
-      variables: [
-        {
-          name: 'keyword',
-          type: 'text',
-          description: '검색 키워드',
-        },
-      ],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    @Param() param: GetTemplateParamDto,
+  ): Promise<TemplateResponseDto> {
+    return this.templateService.findOneById(param.id, userId);
   }
 }

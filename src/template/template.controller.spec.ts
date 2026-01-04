@@ -17,6 +17,7 @@ describe('TemplateController', () => {
           provide: TemplateService,
           useValue: {
             findAllByUserId: jest.fn(),
+            findOneById: jest.fn(),
           },
         },
       ],
@@ -66,12 +67,25 @@ describe('TemplateController', () => {
   });
 
   describe('findOne', () => {
-    it('should return a single template', () => {
-      const result = controller.findOne('test-user-id', { id: 'test-id' });
+    it('should return a single template', async () => {
+      const date = new Date();
 
-      expect(result).toHaveProperty('id', 'test-id');
-      expect(result).toHaveProperty('title');
-      expect(result).toHaveProperty('variables');
+      const mockTemplate = {
+        id: 'test-id',
+        title: 'Test Template',
+        description: 'Test Description',
+        content: 'Test Content',
+        variables: [],
+        createdAt: date,
+        updatedAt: date,
+      };
+
+      jest.spyOn(service, 'findOneById').mockResolvedValue(mockTemplate);
+
+      const result = await controller.findOne('test-user-id', { id: 'test-id' });
+
+      expect(result).toEqual(mockTemplate);
+      expect(service.findOneById).toHaveBeenCalledWith('test-id', 'test-user-id');
     });
   });
 });

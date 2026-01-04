@@ -1,3 +1,4 @@
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../prisma/prisma.service';
 import { TemplateService } from './template.service';
@@ -18,6 +19,7 @@ describe('TemplateService', () => {
             },
             template: {
               findMany: jest.fn(),
+              findUnique: jest.fn(),
             },
           },
         },
@@ -118,6 +120,95 @@ describe('TemplateService', () => {
 
       expect(result).toHaveLength(0);
       expect(prisma.template.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('findOneById', () => {
+    it('should return a template if user is owner', async () => {
+      const date = new Date();
+
+      const mockUser = {
+        id: 'user-db-id-123',
+        oauthId: 'google-user-1',
+        oauthProvider: 'google',
+        email: 'test@example.com',
+        name: 'Test User',
+        createdAt: date,
+        updatedAt: date,
+      };
+
+      const mockTemplate = {
+        id: 'tpl_1',
+        creatorId: 'user-db-id-123', // 소유자 일치
+        title: 'Test Template',
+        description: 'Description',
+        content: 'Content',
+        variable: [],
+        createdAt: date,
+        updatedAt: date,
+      };
+
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
+
+      const result = await service.findOneById('tpl_1', 'google-user-1');
+
+      expect(result.id).toBe('tpl_1');
+      expect(result.title).toBe('Test Template');
+    });
+
+    it('should throw NotFoundException if template does not exist', async () => {
+      const date = new Date();
+
+      const mockUser = {
+        id: 'user-db-id-123',
+        oauthId: 'google-user-1',
+        // ... 나머지 필드 생략 가능하지만 안전하게
+        oauthProvider: 'google',
+        email: 'test@example.com',
+        name: 'Test User',
+        createdAt: date,
+        updatedAt: date,
+      };
+
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(null);
+
+      await expect(service.findOneById('tpl_999', 'google-user-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw ForbiddenException if user is not owner', async () => {
+      const date = new Date();
+
+      const mockUser = {
+        id: 'user-db-id-123',
+        oauthId: 'google-user-1',
+        oauthProvider: 'google',
+        email: 'test@example.com',
+        name: 'Test User',
+        createdAt: date,
+        updatedAt: date,
+      };
+
+      const mockTemplate = {
+        id: 'tpl_1',
+        creatorId: 'user-db-id-456',
+        title: 'Test Template',
+        description: 'Description',
+        content: 'Content',
+        variable: [],
+        createdAt: date,
+        updatedAt: date,
+      };
+
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
+
+      await expect(service.findOneById('tpl_1', 'google-user-1')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 });
