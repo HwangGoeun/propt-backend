@@ -7,11 +7,19 @@ import { TemplateService } from './template.service';
 
 describe('TemplateController', () => {
   let controller: TemplateController;
+  let service: TemplateService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TemplateController],
-      providers: [TemplateService],
+      providers: [
+        {
+          provide: TemplateService,
+          useValue: {
+            findAllByUserId: jest.fn(),
+          },
+        },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({
@@ -25,17 +33,35 @@ describe('TemplateController', () => {
       .compile();
 
     controller = module.get<TemplateController>(TemplateController);
+    service = module.get<TemplateService>(TemplateService);
   });
 
   describe('findAll', () => {
-    it('should return an arrya of templates', () => {
-      const result = controller.findAll('test-user-id');
+    it('should return an arrya of templates', async () => {
+      const date = new Date();
+
+      const mockTemplates = [
+        {
+          id: 'template-1',
+          title: 'Test Template',
+          description: 'Test Description',
+          content: 'Test Content',
+          variables: [],
+          createdAt: date,
+          updatedAt: date,
+        },
+      ];
+
+      jest.spyOn(service, 'findAllByUserId').mockResolvedValue(mockTemplates);
+
+      const result = await controller.findAll('test-user-id');
 
       expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBeGreaterThan(0);
+      expect(result).toHaveLength(1);
       expect(result[0]).toHaveProperty('id');
       expect(result[0]).toHaveProperty('title');
       expect(result[0]).toHaveProperty('variables');
+      expect(service.findAllByUserId).toHaveBeenCalledWith('test-user-id');
     });
   });
 

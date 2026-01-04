@@ -3,61 +3,16 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { GetTemplateParamDto } from './dto/get-template-param.dto';
 import { TemplateResponseDto } from './dto/template-response.dto';
+import { TemplateService } from './template.service';
 
 @Controller('templates')
 @UseGuards(JwtAuthGuard)
 export class TemplateController {
-  @Get()
-  findAll(@CurrentUser('userId') userId: string): TemplateResponseDto[] {
-    console.log('User ID:', userId);
+  constructor(private readonly templateService: TemplateService) {}
 
-    return [
-      {
-        id: 'mock-1',
-        title: 'Mock Template 1',
-        description: 'This is a mock template 1',
-        content: 'Mock content: {keyword}',
-        variables: [
-          {
-            name: 'keyword',
-            type: 'text',
-            description: '검색 키워드',
-          },
-        ],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: 'mock-2',
-        title: 'Mock Template 2',
-        description: 'This is a mock template 2',
-        content: 'Mock content: {keyword}',
-        variables: [
-          {
-            name: 'keyword',
-            type: 'text',
-            description: '검색 키워드',
-          },
-        ],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: 'mock-3',
-        title: 'Mock Template 3',
-        description: 'This is a mock template 3',
-        content: 'Mock content: {keyword}',
-        variables: [
-          {
-            name: 'keyword',
-            type: 'text',
-            description: '검색 키워드',
-          },
-        ],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ];
+  @Get()
+  async findAll(@CurrentUser('userId') userId: string): Promise<TemplateResponseDto[]> {
+    return this.templateService.findAllByUserId(userId);
   }
 
   @Get(':id')
