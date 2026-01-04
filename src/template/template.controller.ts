@@ -1,12 +1,16 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { GetTemplateParamDto } from './dto/get-template-param.dto';
 import { TemplateResponseDto } from './dto/template-response.dto';
 
 @Controller('templates')
+@UseGuards(JwtAuthGuard)
 export class TemplateController {
   @Get()
-  findAll(): TemplateResponseDto[] {
-    // Mock data
+  findAll(@CurrentUser('userId') userId: string): TemplateResponseDto[] {
+    console.log('User ID:', userId);
+
     return [
       {
         id: 'mock-1',
@@ -57,8 +61,12 @@ export class TemplateController {
   }
 
   @Get(':id')
-  findOne(@Param() Param: GetTemplateParamDto): TemplateResponseDto {
-    // Mock data
+  findOne(
+    @CurrentUser('userId') userId: string,
+    @Param() Param: GetTemplateParamDto,
+  ): TemplateResponseDto {
+    console.log('User ID:', userId);
+
     return {
       id: Param.id,
       title: `Mock Template ${Param.id}`,
