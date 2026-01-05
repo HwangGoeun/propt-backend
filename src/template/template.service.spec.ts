@@ -22,6 +22,7 @@ describe('TemplateService', () => {
               create: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
+              update: jest.fn(),
             },
           },
         },
@@ -287,6 +288,147 @@ describe('TemplateService', () => {
       await expect(service.findOneById('tpl_1', 'google-user-1')).rejects.toThrow(
         ForbiddenException,
       );
+    });
+  });
+
+  describe('update', () => {
+    const date = new Date();
+
+    const mockUser = {
+      id: 'user-db-id-123',
+      oauthId: 'google-user-1',
+      oauthProvider: 'google',
+      email: 'test@example.com',
+      name: 'Test User',
+      createdAt: date,
+      updatedAt: date,
+    };
+
+    const mockTemplate = {
+      id: 'tpl_1',
+      creatorId: 'user-db-id-123',
+      title: 'Original Title',
+      description: 'Original Description',
+      content: 'Original Content',
+      variable: [{ name: 'var1', type: 'text' }],
+      createdAt: date,
+      updatedAt: date,
+    };
+
+    it('should update template successfully', async () => {
+      const updateDto = {
+        title: 'Updated Title',
+        description: 'Updated Description',
+        content: 'Updated Content',
+        variables: [{ name: 'var2', type: 'text' as const }],
+      };
+
+      const updatedTemplate = {
+        ...mockTemplate,
+        title: updateDto.title,
+        description: updateDto.description,
+        content: updateDto.content,
+        variable: updateDto.variables,
+        updatedAt: new Date(),
+      };
+
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
+      jest.spyOn(prisma.template, 'update').mockResolvedValue(updatedTemplate);
+
+      const result = await service.update('tpl_1', 'google-user-1', updateDto);
+
+      expect(result.id).toBe('tpl_1');
+      expect(result.title).toBe('Updated Title');
+      expect(result.description).toBe('Updated Description');
+      expect(result.content).toBe('Updated Content');
+      expect(prisma.template.update).toHaveBeenCalledWith({
+        where: { id: 'tpl_1' },
+        data: {
+          title: 'Updated Title',
+          description: 'Updated Description',
+          content: 'Updated Content',
+          variable: updateDto.variables,
+        },
+      });
+    });
+
+    it('should throw NotFoundException if user not found', async () => {
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(null);
+
+      await expect(service.update('tpl_1', 'non-existent', { title: 'New Title' })).rejects.toThrow(
+        NotFoundException,
+      );
+
+      expect(prisma.template.findUnique).not.toHaveBeenCalled();
+      expect(prisma.template.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if template not found', async () => {
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(null);
+
+      await expect(
+        service.update('tpl_999', 'google-user-1', { title: 'New Title' }),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(prisma.template.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if user is not owner', async () => {
+      const otherUserTemplate = {
+        ...mockTemplate,
+        creatorId: 'other-user-id',
+      };
+
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(otherUserTemplate);
+
+      await expect(
+        service.update('tpl_1', 'google-user-1', { title: 'New Title' }),
+      ).rejects.toThrow(ForbiddenException);
+
+      expect(prisma.template.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException on duplicate title (P2002)', async () => {
+      const prismaError = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: '5.0.0',
+      });
+
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
+      jest.spyOn(prisma.template, 'update').mockRejectedValue(prismaError);
+
+      await expect(
+        service.update('tpl_1', 'google-user-1', { title: 'Duplicate Title' }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('should update only title when partial update', async () => {
+      const partialUpdateDto = { title: 'Only Title Updated' };
+
+      const partiallyUpdatedTemplate = {
+        ...mockTemplate,
+        title: partialUpdateDto.title,
+        updatedAt: new Date(),
+      };
+
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
+      jest.spyOn(prisma.template, 'update').mockResolvedValue(partiallyUpdatedTemplate);
+
+      const result = await service.update('tpl_1', 'google-user-1', partialUpdateDto);
+
+      expect(result.title).toBe('Only Title Updated');
+      expect(result.description).toBe('Original Description');
+      expect(prisma.template.update).toHaveBeenCalledWith({
+        where: { id: 'tpl_1' },
+        data: {
+          title: 'Only Title Updated',
+        },
+      });
     });
   });
 });

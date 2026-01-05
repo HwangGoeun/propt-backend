@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { GetTemplateParamDto } from './dto/get-template-param.dto';
 import { TemplateResponseDto } from './dto/template-response.dto';
+import { UpdateTemplateDto } from './dto/update-template.dto';
 import { TemplateService } from './template.service';
 
 @ApiTags('Templates')
@@ -58,5 +59,25 @@ export class TemplateController {
     @Param() param: GetTemplateParamDto,
   ): Promise<TemplateResponseDto> {
     return this.templateService.findOneById(param.id, userId);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update template' })
+  @ApiResponse({
+    status: 200,
+    description: 'Template updated successfully',
+    type: TemplateResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 401, description: 'Authentication failed' })
+  @ApiResponse({ status: 403, description: 'No permission' })
+  @ApiResponse({ status: 404, description: 'Template not found' })
+  @ApiResponse({ status: 409, description: 'Duplicate title' })
+  async update(
+    @CurrentUser('userId') userId: string,
+    @Param() param: GetTemplateParamDto,
+    @Body() dto: UpdateTemplateDto,
+  ): Promise<TemplateResponseDto> {
+    return this.templateService.update(param.id, userId, dto);
   }
 }

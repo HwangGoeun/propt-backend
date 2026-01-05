@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { TemplateResponseDto } from './dto/template-response.dto';
 import { TemplateVariableDto } from './dto/template-variable.dto';
+import { UpdateTemplateDto } from './dto/update-template.dto';
 
 @Injectable()
 export class TemplateService {
@@ -71,6 +72,50 @@ export class TemplateService {
     }
 
     return this.toResponseDto(template);
+  }
+
+  async update(id: string, userId: string, dto: UpdateTemplateDto): Promise<TemplateResponseDto> {
+    const user = await this.getUserOrThrow(userId);
+
+    // Template lookup
+    const template = await this.prisma.template.findUnique({
+      where: { id },
+    });
+
+    if (!template) {
+      throw new NotFoundException(`Template with ID ${id} not found`);
+    }
+
+    // Ownership verification
+    if (template.creatorId !== user.id) {
+      throw new ForbiddenException('You do not have access to this template');
+    }
+
+    // Perform update
+    try {
+      const updatedTemplate = await this.prisma.template.update({
+        where: { id },
+        data: {
+          ...(dto.title !== undefined && { title: dto.title }),
+          ...(dto.description !== undefined && { description: dto.description }),
+          ...(dto.content !== undefined && { content: dto.content }),
+          ...(dto.variables !== undefined && {
+            variable: dto.variables as unknown as Prisma.InputJsonValue[],
+          }),
+        },
+      });
+
+      return this.toResponseDto(updatedTemplate);
+    } catch (error) {
+      // Handle title duplication error (P2002 error)
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException(`Template with title '${dto.title}' already exists`);
+        }
+      }
+
+      throw error;
+    }
   }
 
   /**

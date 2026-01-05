@@ -18,6 +18,7 @@ describe('TemplateController', () => {
           useValue: {
             findAllByUserId: jest.fn(),
             findOneById: jest.fn(),
+            update: jest.fn(),
           },
         },
       ],
@@ -86,6 +87,34 @@ describe('TemplateController', () => {
 
       expect(result).toEqual(mockTemplate);
       expect(service.findOneById).toHaveBeenCalledWith('test-id', 'test-user-id');
+    });
+  });
+
+  describe('update', () => {
+    it('should call service.update with correct parameters', async () => {
+      const date = new Date();
+
+      const updateDto = {
+        title: 'Updated Title',
+        description: 'Updated Description',
+      };
+
+      const mockResponse = {
+        id: 'test-id',
+        title: 'Updated Title',
+        description: 'Updated Description',
+        content: 'Original Content',
+        variables: [],
+        createdAt: date,
+        updatedAt: date,
+      };
+
+      jest.spyOn(service, 'update').mockResolvedValue(mockResponse);
+
+      const result = await controller.update('test-user-id', { id: 'test-id' }, updateDto);
+
+      expect(result).toEqual(mockResponse);
+      expect(service.update).toHaveBeenCalledWith('test-id', 'test-user-id', updateDto);
     });
   });
 });
