@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Template } from '@prisma/client';
+import { Prisma, Template, User } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { TemplateResponseDto } from './dto/template-response.dto';
@@ -15,13 +15,7 @@ export class TemplateService {
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateTemplateDto): Promise<TemplateResponseDto> {
-    const user = await this.prisma.user.findFirst({
-      where: { oauthId: userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    const user = await this.getUserOrThrow(userId);
 
     try {
       const template = await this.prisma.template.create({
@@ -47,9 +41,7 @@ export class TemplateService {
   }
 
   async findAllByUserId(userId: string): Promise<TemplateResponseDto[]> {
-    const user = await this.prisma.user.findFirst({
-      where: { oauthId: userId },
-    });
+    const user = await this.findUserByOauthId(userId);
 
     if (!user) {
       return [];
@@ -64,13 +56,7 @@ export class TemplateService {
   }
 
   async findOneById(id: string, userId: string): Promise<TemplateResponseDto> {
-    const user = await this.prisma.user.findFirst({
-      where: { oauthId: userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
+    const user = await this.getUserOrThrow(userId);
 
     const template = await this.prisma.template.findUnique({
       where: { id },
@@ -85,6 +71,28 @@ export class TemplateService {
     }
 
     return this.toResponseDto(template);
+  }
+
+  /**
+   * OAuth ID로 사용자 조회
+   */
+  private async findUserByOauthId(oauthId: string): Promise<User | null> {
+    return this.prisma.user.findFirst({
+      where: { oauthId },
+    });
+  }
+
+  /**
+   * OAuth ID로 사용자 조회 (없으면 에러 발생)
+   */
+  private async getUserOrThrow(oauthId: string): Promise<User> {
+    const user = await this.findUserByOauthId(oauthId);
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
   }
 
   /**
