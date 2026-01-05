@@ -1,5 +1,6 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { TemplateService } from './template.service';
 
@@ -18,6 +19,7 @@ describe('TemplateService', () => {
               findFirst: jest.fn(),
             },
             template: {
+              create: jest.fn(),
               findMany: jest.fn(),
               findUnique: jest.fn(),
             },
@@ -28,6 +30,79 @@ describe('TemplateService', () => {
 
     service = module.get<TemplateService>(TemplateService);
     prisma = module.get<PrismaService>(PrismaService);
+  });
+
+  describe('create', () => {
+    const date = new Date();
+
+    const mockUser = {
+      id: 'user-db-id-123',
+      oauthId: 'google-user-1',
+      oauthProvider: 'google',
+      email: 'test@example.com',
+      name: 'Test User',
+      createdAt: date,
+      updatedAt: date,
+    };
+
+    const createDto = {
+      title: 'New Template',
+      description: 'Description',
+      content: 'Content with {variable}',
+      variables: [{ name: 'variable', type: 'text' as const }],
+    };
+
+    it('should create template successfully', async () => {
+      const date = new Date();
+
+      const mockTemplate = {
+        id: 'tpl_new',
+        creatorId: 'user-db-id-123',
+        title: createDto.title,
+        description: createDto.description,
+        content: createDto.content,
+        variable: createDto.variables,
+        createdAt: date,
+        updatedAt: date,
+      };
+
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(prisma.template, 'create').mockResolvedValue(mockTemplate);
+
+      const result = await service.create('google-user-1', createDto);
+
+      expect(result.id).toBe('tpl_new');
+      expect(result.title).toBe('New Template');
+      expect(prisma.template.create).toHaveBeenCalledWith({
+        data: {
+          creatorId: 'user-db-id-123',
+          title: createDto.title,
+          description: createDto.description,
+          content: createDto.content,
+          variable: createDto.variables,
+        },
+      });
+    });
+
+    it('should throw NotFoundException when user not found', async () => {
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(null);
+
+      await expect(service.create('non-existent', createDto)).rejects.toThrow(NotFoundException);
+
+      expect(prisma.template.create).not.toHaveBeenCalled();
+    });
+
+    it('should throw ConflictException on duplicate title', async () => {
+      const prismaError = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+        code: 'P2002',
+        clientVersion: '5.0.0',
+      });
+
+      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(prisma.template, 'create').mockRejectedValue(prismaError);
+
+      await expect(service.create('google-user-1', createDto)).rejects.toThrow(ConflictException);
+    });
   });
 
   describe('findAllByUserId', () => {
@@ -141,7 +216,7 @@ describe('TemplateService', () => {
 
       const mockTemplate = {
         id: 'tpl_1',
-        creatorId: 'user-db-id-123', // 소유자 일치
+        creatorId: 'user-db-id-123',
         title: 'Test Template',
         description: 'Description',
         content: 'Content',
@@ -167,7 +242,6 @@ describe('TemplateService', () => {
       const mockUser = {
         id: 'user-db-id-123',
         oauthId: 'google-user-1',
-        // ... 나머지 필드 생략 가능하지만 안전하게
         oauthProvider: 'google',
         email: 'test@example.com',
         name: 'Test User',

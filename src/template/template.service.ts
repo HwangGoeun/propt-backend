@@ -1,12 +1,50 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { Template } from '@prisma/client';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { Prisma, Template } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { CreateTemplateDto } from './dto/create-template.dto';
 import { TemplateResponseDto } from './dto/template-response.dto';
 import { TemplateVariableDto } from './dto/template-variable.dto';
 
 @Injectable()
 export class TemplateService {
   constructor(private prisma: PrismaService) {}
+
+  async create(userId: string, dto: CreateTemplateDto): Promise<TemplateResponseDto> {
+    const user = await this.prisma.user.findFirst({
+      where: { oauthId: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    try {
+      const template = await this.prisma.template.create({
+        data: {
+          creatorId: user.id,
+          title: dto.title,
+          description: dto.description,
+          content: dto.content,
+          variable: (dto.variables as unknown as Prisma.InputJsonValue[]) ?? [],
+        },
+      });
+
+      return this.toResponseDto(template);
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException(`Template with title '${dto.title}' already exists`);
+        }
+      }
+
+      throw error;
+    }
+  }
 
   async findAllByUserId(userId: string): Promise<TemplateResponseDto[]> {
     const user = await this.prisma.user.findFirst({

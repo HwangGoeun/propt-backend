@@ -1,7 +1,8 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CreateTemplateDto } from './dto/create-template.dto';
 import { GetTemplateParamDto } from './dto/get-template-param.dto';
 import { TemplateResponseDto } from './dto/template-response.dto';
 import { TemplateService } from './template.service';
@@ -12,6 +13,23 @@ import { TemplateService } from './template.service';
 @UseGuards(JwtAuthGuard)
 export class TemplateController {
   constructor(private readonly templateService: TemplateService) {}
+
+  @Post()
+  @ApiOperation({ summary: 'Create template' })
+  @ApiResponse({
+    status: 201,
+    description: 'Template created successfully',
+    type: TemplateResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Validation failed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 409, description: 'Duplicate title' })
+  async create(
+    @CurrentUser('userId') userId: string,
+    @Body() dto: CreateTemplateDto,
+  ): Promise<TemplateResponseDto> {
+    return this.templateService.create(userId, dto);
+  }
 
   @Get()
   @ApiOperation({ summary: 'List templates' })
