@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -79,5 +79,17 @@ export class TemplateController {
     @Body() dto: UpdateTemplateDto,
   ): Promise<TemplateResponseDto> {
     return this.templateService.update(param.id, userId, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Delete Template' })
+  @ApiResponse({ status: 200, description: 'Delete successfully' })
+  @ApiResponse({ status: 404, description: 'Template not found' })
+  async remove(
+    @CurrentUser('userId') userId: string,
+    @Param() param: GetTemplateParamDto,
+  ): Promise<void> {
+    await this.templateService.remove(param.id, userId);
   }
 }

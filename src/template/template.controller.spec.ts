@@ -19,6 +19,7 @@ describe('TemplateController', () => {
             findAllByUserId: jest.fn(),
             findOneById: jest.fn(),
             update: jest.fn(),
+            remove: jest.fn(),
           },
         },
       ],
@@ -115,6 +116,17 @@ describe('TemplateController', () => {
 
       expect(result).toEqual(mockResponse);
       expect(service.update).toHaveBeenCalledWith('test-id', 'test-user-id', updateDto);
+    });
+  });
+
+  describe('remove', () => {
+    it('should call service.remove with correct parameters', async () => {
+      jest.spyOn(service, 'remove').mockResolvedValue();
+
+      const result = await controller.remove('test-user-id', { id: 'test-id' });
+
+      expect(service.remove).toHaveBeenCalledWith('test-id', 'test-user-id');
+      expect(result).toBe(undefined);
     });
   });
 });

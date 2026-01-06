@@ -118,6 +118,14 @@ export class TemplateService {
     }
   }
 
+  async remove(templateId: string, userId: string): Promise<void> {
+    await this.findOneById(templateId, userId);
+
+    await this.prisma.template.delete({
+      where: { id: templateId },
+    });
+  }
+
   /**
    * OAuth ID로 사용자 조회
    */

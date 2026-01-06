@@ -23,6 +23,7 @@ describe('TemplateService', () => {
               findMany: jest.fn(),
               findUnique: jest.fn(),
               update: jest.fn(),
+              delete: jest.fn(),
             },
           },
         },
@@ -428,6 +429,43 @@ describe('TemplateService', () => {
         data: {
           title: 'Only Title Updated',
         },
+      });
+    });
+  });
+
+  describe('remove', () => {
+    it('should delete the template successfully', async () => {
+      const date = new Date();
+
+      const mockTemplateResponse = {
+        id: 'tpl_1',
+        title: 'Test Template',
+        description: 'Description',
+        content: 'Content',
+        variables: [],
+        createdAt: date,
+        updatedAt: date,
+      };
+
+      const mockTemplate = {
+        id: 'tpl_1',
+        creatorId: 'user-db-id-123',
+        title: 'Test Template',
+        description: 'Description',
+        content: 'Content',
+        variable: [],
+        createdAt: date,
+        updatedAt: date,
+      };
+
+      jest.spyOn(service, 'findOneById').mockResolvedValue(mockTemplateResponse);
+      jest.spyOn(prisma.template, 'delete').mockResolvedValue(mockTemplate);
+
+      await service.remove('tpl_1', 'google-user-1');
+
+      expect(service.findOneById).toHaveBeenCalledWith('tpl_1', 'google-user-1');
+      expect(prisma.template.delete).toHaveBeenCalledWith({
+        where: { id: 'tpl_1' },
       });
     });
   });
