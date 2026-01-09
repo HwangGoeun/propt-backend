@@ -82,4 +82,24 @@ export class AuthController {
   refresh(@Body() dto: RefreshTokenDto): TokenResponseDto {
     return this.authService.refreshTokens(dto.refreshToken);
   }
+
+  @Post('logout')
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('accessToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+
+    return {
+      ok: true,
+      data: null,
+    };
+  }
 }
