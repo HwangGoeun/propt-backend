@@ -79,4 +79,33 @@ export class TokenService {
       });
     }
   }
+
+  verifyToken(accessToken: string): Payload {
+    const config = this.jwtConfigService.getJwtConfig();
+
+    try {
+      const payload = verify(accessToken, config.accessSecret) as Payload;
+      return payload;
+    } catch (error) {
+      if (error instanceof TokenExpiredError) {
+        throw new UnauthorizedException({
+          errorCode: ERROR_CODE.TOKEN_EXPIRED,
+          message: 'Access token has expired',
+        });
+      }
+
+      if (error instanceof JsonWebTokenError) {
+        throw new UnauthorizedException({
+          errorCode: ERROR_CODE.TOKEN_INVALID,
+          message: 'Invalid access token',
+        });
+      }
+
+      throw new UnauthorizedException({
+        errorCode: ERROR_CODE.TOKEN_INVALID,
+        message: 'Token verification failed',
+        details: error,
+      });
+    }
+  }
 }

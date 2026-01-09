@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 import ms from 'ms';
 import { JwtConfigService } from 'src/config/jwt.config';
@@ -43,6 +52,30 @@ export class AuthController {
     });
 
     res.redirect(`${process.env.FRONTEND_URL}/templates`);
+  }
+
+  @Get('me')
+  async getMe(@Req() request: Request) {
+    const cookies = request.cookies as Record<string, string | undefined>;
+    const accessToken = cookies['accessToken'];
+
+    if (!accessToken) {
+      throw new UnauthorizedException('인증되지 않았습니다.');
+    }
+
+    const user = await this.authService.validateToken(accessToken);
+
+    return {
+      ok: true,
+      data: {
+        isAuthenticated: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+        },
+      },
+    };
   }
 
   @Post('refresh')

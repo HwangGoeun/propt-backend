@@ -82,4 +82,49 @@ export class AuthService {
   refreshTokens(refreshToken: string): TokenResponseDto {
     return this.tokenService.refreshTokens(refreshToken);
   }
+
+  async validateToken(accessToken: string) {
+    const payload = this.tokenService.verifyToken(accessToken);
+
+    const user = await this.prisma.user.findUnique({
+      where: {
+        oauthProvider_oauthId: {
+          oauthProvider: payload.oauthProvider,
+          oauthId: payload.oauthId,
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException({
+        errorCode: ERROR_CODE.USER_NOT_FOUND,
+        message: '사용자를 찾을 수 없습니다',
+      });
+    }
+
+    return user;
+  }
+
+  /**
+   * OAuth ID로 사용자 조회
+   */
+  async getUserByOAuthId(oauthId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { oauthId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException({
+        errorCode: ERROR_CODE.USER_NOT_FOUND,
+        message: '사용자를 찾을 수 없습니다',
+      });
+    }
+
+    return user;
+  }
 }

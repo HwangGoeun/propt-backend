@@ -14,6 +14,7 @@ export const ERROR_CODE = {
 
   // User 관련 에러
   USER_CONFLICT: 'USER_CONFLICT',
+  USER_NOT_FOUND: 'USER_NOT_FOUND',
 
   // Token 관련 에러
   TOKEN_ISSUE_FAILED: 'TOKEN_ISSUE_FAILED',
