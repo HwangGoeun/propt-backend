@@ -1,23 +1,33 @@
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Prisma } from '@prisma/client';
+import { AuthService } from '../auth/auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TemplateService } from './template.service';
 
 describe('TemplateService', () => {
   let service: TemplateService;
   let prisma: PrismaService;
+  let authService: AuthService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TemplateService,
         {
+          provide: AuthService,
+          useValue: {
+            getUserByOAuthId: jest.fn(),
+          },
+        },
+        {
           provide: PrismaService,
           useValue: {
-            user: {
-              findFirst: jest.fn(),
-            },
             template: {
               create: jest.fn(),
               findMany: jest.fn(),
@@ -32,6 +42,7 @@ describe('TemplateService', () => {
 
     service = module.get<TemplateService>(TemplateService);
     prisma = module.get<PrismaService>(PrismaService);
+    authService = module.get<AuthService>(AuthService);
   });
 
   describe('create', () => {
@@ -68,7 +79,7 @@ describe('TemplateService', () => {
         updatedAt: date,
       };
 
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
       jest.spyOn(prisma.template, 'create').mockResolvedValue(mockTemplate);
 
       const result = await service.create('google-user-1', createDto);
@@ -86,10 +97,12 @@ describe('TemplateService', () => {
       });
     });
 
-    it('should throw NotFoundException when user not found', async () => {
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(null);
+    it('should throw UnauthorizedException when user not found', async () => {
+      jest.spyOn(authService, 'getUserByOAuthId').mockRejectedValue(new UnauthorizedException());
 
-      await expect(service.create('non-existent', createDto)).rejects.toThrow(NotFoundException);
+      await expect(service.create('non-existent', createDto)).rejects.toThrow(
+        UnauthorizedException,
+      );
 
       expect(prisma.template.create).not.toHaveBeenCalled();
     });
@@ -100,7 +113,7 @@ describe('TemplateService', () => {
         clientVersion: '5.0.0',
       });
 
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
       jest.spyOn(prisma.template, 'create').mockRejectedValue(prismaError);
 
       await expect(service.create('google-user-1', createDto)).rejects.toThrow(ConflictException);
@@ -149,7 +162,7 @@ describe('TemplateService', () => {
         },
       ];
 
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
       jest.spyOn(prisma.template, 'findMany').mockResolvedValue(mockTemplates);
 
       const result = await service.findAllByUserId('google-user-1');
@@ -162,9 +175,7 @@ describe('TemplateService', () => {
       expect(result[1].id).toBe('template_2');
       expect(result[1].description).toBeUndefined();
 
-      expect(prisma.user.findFirst).toHaveBeenCalledWith({
-        where: { oauthId: 'google-user-1' },
-      });
+      expect(authService.getUserByOAuthId).toHaveBeenCalledWith('google-user-1');
       expect(prisma.template.findMany).toHaveBeenCalledWith({
         where: { creatorId: 'user-db-id-123' },
         orderBy: { createdAt: 'desc' },
@@ -184,7 +195,7 @@ describe('TemplateService', () => {
         updatedAt: date,
       };
 
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
       jest.spyOn(prisma.template, 'findMany').mockResolvedValue([]);
 
       const result = await service.findAllByUserId('google-user-1');
@@ -192,12 +203,13 @@ describe('TemplateService', () => {
       expect(result).toHaveLength(0);
     });
 
-    it('should return empty array if user not found', async () => {
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(null);
+    it('should throw UnauthorizedException if user not found', async () => {
+      jest.spyOn(authService, 'getUserByOAuthId').mockRejectedValue(new UnauthorizedException());
 
-      const result = await service.findAllByUserId('non-existent-user');
+      await expect(service.findAllByUserId('non-existent-user')).rejects.toThrow(
+        UnauthorizedException,
+      );
 
-      expect(result).toHaveLength(0);
       expect(prisma.template.findMany).not.toHaveBeenCalled();
     });
   });
@@ -227,7 +239,7 @@ describe('TemplateService', () => {
         updatedAt: date,
       };
 
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
       jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
 
       const result = await service.findOneById('tpl_1', 'google-user-1');
@@ -251,7 +263,7 @@ describe('TemplateService', () => {
         updatedAt: date,
       };
 
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
       jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(null);
 
       await expect(service.findOneById('tpl_999', 'google-user-1')).rejects.toThrow(
@@ -283,7 +295,7 @@ describe('TemplateService', () => {
         updatedAt: date,
       };
 
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
       jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
 
       await expect(service.findOneById('tpl_1', 'google-user-1')).rejects.toThrow(
@@ -333,7 +345,7 @@ describe('TemplateService', () => {
         updatedAt: new Date(),
       };
 
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
       jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
       jest.spyOn(prisma.template, 'update').mockResolvedValue(updatedTemplate);
 
@@ -354,11 +366,11 @@ describe('TemplateService', () => {
       });
     });
 
-    it('should throw NotFoundException if user not found', async () => {
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(null);
+    it('should throw UnauthorizedException if user not found', async () => {
+      jest.spyOn(authService, 'getUserByOAuthId').mockRejectedValue(new UnauthorizedException());
 
       await expect(service.update('tpl_1', 'non-existent', { title: 'New Title' })).rejects.toThrow(
-        NotFoundException,
+        UnauthorizedException,
       );
 
       expect(prisma.template.findUnique).not.toHaveBeenCalled();
@@ -366,7 +378,7 @@ describe('TemplateService', () => {
     });
 
     it('should throw NotFoundException if template not found', async () => {
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
       jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(null);
 
       await expect(
@@ -382,7 +394,7 @@ describe('TemplateService', () => {
         creatorId: 'other-user-id',
       };
 
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
       jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(otherUserTemplate);
 
       await expect(
@@ -398,7 +410,7 @@ describe('TemplateService', () => {
         clientVersion: '5.0.0',
       });
 
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
       jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
       jest.spyOn(prisma.template, 'update').mockRejectedValue(prismaError);
 
@@ -416,7 +428,7 @@ describe('TemplateService', () => {
         updatedAt: new Date(),
       };
 
-      jest.spyOn(prisma.user, 'findFirst').mockResolvedValue(mockUser);
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
       jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
       jest.spyOn(prisma.template, 'update').mockResolvedValue(partiallyUpdatedTemplate);
 
