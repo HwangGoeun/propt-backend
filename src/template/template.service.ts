@@ -4,7 +4,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Template, User } from '@prisma/client';
+import { Prisma, Template } from '@prisma/client';
+import { AuthService } from 'src/auth/auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { TemplateResponseDto } from './dto/template-response.dto';
@@ -13,10 +14,13 @@ import { UpdateTemplateDto } from './dto/update-template.dto';
 
 @Injectable()
 export class TemplateService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private authService: AuthService,
+  ) {}
 
   async create(userId: string, dto: CreateTemplateDto): Promise<TemplateResponseDto> {
-    const user = await this.getUserOrThrow(userId);
+    const user = await this.authService.getUserByOAuthId(userId);
 
     try {
       const template = await this.prisma.template.create({
@@ -42,11 +46,7 @@ export class TemplateService {
   }
 
   async findAllByUserId(userId: string): Promise<TemplateResponseDto[]> {
-    const user = await this.findUserByOauthId(userId);
-
-    if (!user) {
-      return [];
-    }
+    const user = await this.authService.getUserByOAuthId(userId);
 
     const templates = await this.prisma.template.findMany({
       where: { creatorId: user.id },
@@ -57,7 +57,7 @@ export class TemplateService {
   }
 
   async findOneById(id: string, userId: string): Promise<TemplateResponseDto> {
-    const user = await this.getUserOrThrow(userId);
+    const user = await this.authService.getUserByOAuthId(userId);
 
     const template = await this.prisma.template.findUnique({
       where: { id },
@@ -75,7 +75,7 @@ export class TemplateService {
   }
 
   async update(id: string, userId: string, dto: UpdateTemplateDto): Promise<TemplateResponseDto> {
-    const user = await this.getUserOrThrow(userId);
+    const user = await this.authService.getUserByOAuthId(userId);
 
     // Template lookup
     const template = await this.prisma.template.findUnique({
@@ -124,28 +124,6 @@ export class TemplateService {
     await this.prisma.template.delete({
       where: { id: templateId },
     });
-  }
-
-  /**
-   * OAuth ID로 사용자 조회
-   */
-  private async findUserByOauthId(oauthId: string): Promise<User | null> {
-    return this.prisma.user.findFirst({
-      where: { oauthId },
-    });
-  }
-
-  /**
-   * OAuth ID로 사용자 조회 (없으면 에러 발생)
-   */
-  private async getUserOrThrow(oauthId: string): Promise<User> {
-    const user = await this.findUserByOauthId(oauthId);
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return user;
   }
 
   /**
