@@ -23,7 +23,7 @@ export class AuthService {
       oauthId,
       name,
     });
-    const tokens = this.tokenService.generateTokens(oauthProvider, oauthId);
+    const tokens = this.tokenService.generateTokens(oauthId, oauthProvider);
 
     await this.userRepository.updateRefreshToken(user.id, tokens.refreshToken);
 
