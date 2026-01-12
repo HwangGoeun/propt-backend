@@ -19,5 +19,10 @@
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true
-  }
+  },
+  "exclude": [
+    "mcp",
+    "node_modules",
+    "dist"
+  ]
 }
