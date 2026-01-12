@@ -17,6 +17,7 @@ async function main() {
       oauthId: '1234567890',
       name: 'test_user',
       email: 'testuser@example.com',
+      refreshToken: null,
     },
   });
 
@@ -27,9 +28,8 @@ async function main() {
     data: {
       creatorId: user.id,
       title: '블로그 제목 생성',
-      description: '키워드 기반으로 블로그 제목 3개 생성',
       content: '{keyword}에 대한 블로그 제목을 {tone} 톤으로 3개 생성해주세요',
-      variable: [
+      variables: [
         { name: 'keyword', type: 'text' },
         { name: 'tone', type: 'text' },
       ],
@@ -43,9 +43,8 @@ async function main() {
     data: {
       creatorId: user.id,
       title: '콘텐츠 요약',
-      description: '긴 텍스트를 간단하게 요약',
       content: '다음 내용을 3문장으로 요약해주세요:\n\n{content}',
-      variable: [{ name: 'content', type: 'text' }],
+      variables: [{ name: 'content', type: 'text' }],
     },
   });
 
@@ -56,9 +55,8 @@ async function main() {
     data: {
       creatorId: user.id,
       title: '이메일 작성',
-      description: null,
       content: '비즈니스 이메일 예시를 보여주세요.',
-      variable: [],
+      variables: [],
     },
   });
 

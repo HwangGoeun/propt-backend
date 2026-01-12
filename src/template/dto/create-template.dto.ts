@@ -13,15 +13,6 @@ export class CreateTemplateDto {
   title!: string;
 
   @ApiProperty({
-    description: 'Template description',
-    example: 'Generate creative blog titles based on keywords',
-    required: false,
-  })
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @ApiProperty({
     description: 'Template content with variables in {variableName} format',
     example: 'Please create a blog title for {keyword}',
   })

@@ -27,9 +27,8 @@ export class TemplateService {
         data: {
           creatorId: user.id,
           title: dto.title,
-          description: dto.description,
           content: dto.content,
-          variable: (dto.variables as unknown as Prisma.InputJsonValue[]) ?? [],
+          variables: (dto.variables as unknown as Prisma.InputJsonValue[]) ?? [],
         },
       });
 
@@ -97,10 +96,9 @@ export class TemplateService {
         where: { id },
         data: {
           ...(dto.title !== undefined && { title: dto.title }),
-          ...(dto.description !== undefined && { description: dto.description }),
           ...(dto.content !== undefined && { content: dto.content }),
           ...(dto.variables !== undefined && {
-            variable: dto.variables as unknown as Prisma.InputJsonValue[],
+            variables: dto.variables as unknown as Prisma.InputJsonValue[],
           }),
         },
       });
@@ -133,9 +131,8 @@ export class TemplateService {
     return {
       id: template.id,
       title: template.title,
-      description: template.description ?? undefined,
       content: template.content,
-      variables: template.variable as unknown as TemplateVariableDto[],
+      variables: template.variables as unknown as TemplateVariableDto[],
       createdAt: template.createdAt,
       updatedAt: template.updatedAt,
     };

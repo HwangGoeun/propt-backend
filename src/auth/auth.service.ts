@@ -2,7 +2,7 @@ import { Injectable, InternalServerErrorException, UnauthorizedException } from 
 import { User } from '@prisma/client';
 import { ERROR_CODE } from 'src/common/constants/error-code';
 import { generateRandomUsername } from 'src/common/utils/user-name.util';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { UserRepository } from 'src/user/user.repository';
 import { OAuthProfileDto } from './dto/oauth-profile.dto';
 import { TokenResponseDto } from './dto/token-response.dto';
 import { TokenService } from './token.service';
@@ -10,7 +10,7 @@ import { TokenService } from './token.service';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
+    private readonly userRepository: UserRepository,
     private readonly tokenService: TokenService,
   ) {}
 
@@ -24,14 +24,7 @@ export class AuthService {
       });
     }
 
-    const existingUser = await this.prisma.user.findUnique({
-      where: {
-        oauthProvider_oauthId: {
-          oauthProvider: provider,
-          oauthId: providerUserId,
-        },
-      },
-    });
+    const existingUser = await this.userRepository.findByOAuthCredentials(provider, providerUserId);
 
     if (existingUser) {
       return existingUser;
@@ -44,13 +37,11 @@ export class AuthService {
 
     while (retryCount < maxRetries) {
       try {
-        const newUser = await this.prisma.user.create({
-          data: {
-            oauthProvider: provider,
-            oauthId: providerUserId,
-            email: email || null,
-            name: userName,
-          },
+        const newUser = await this.userRepository.createUser({
+          oauthProvider: provider,
+          oauthId: providerUserId,
+          email: email || null,
+          name: userName,
         });
 
         return newUser;
@@ -86,19 +77,10 @@ export class AuthService {
   async validateToken(accessToken: string) {
     const payload = this.tokenService.verifyToken(accessToken);
 
-    const user = await this.prisma.user.findUnique({
-      where: {
-        oauthProvider_oauthId: {
-          oauthProvider: payload.oauthProvider,
-          oauthId: payload.oauthId,
-        },
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-      },
-    });
+    const user = await this.userRepository.findByOAuthCredentials(
+      payload.oauthProvider,
+      payload.oauthId,
+    );
 
     if (!user) {
       throw new UnauthorizedException({
@@ -107,16 +89,18 @@ export class AuthService {
       });
     }
 
-    return user;
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+    };
   }
 
   /**
    * OAuth ID로 사용자 조회
    */
   async getUserByOAuthId(oauthId: string) {
-    const user = await this.prisma.user.findFirst({
-      where: { oauthId },
-    });
+    const user = await this.userRepository.findByOAuthId(oauthId);
 
     if (!user) {
       throw new UnauthorizedException({

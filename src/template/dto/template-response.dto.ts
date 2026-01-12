@@ -8,9 +8,6 @@ export class TemplateResponseDto {
   @ApiProperty({ example: 'Create a blog title' })
   title!: string;
 
-  @ApiProperty({ required: false, example: 'Generate keyword-based blog titles' })
-  description?: string;
-
   @ApiProperty({ example: 'Please create a blog title for {keyword}' })
   content!: string;
 

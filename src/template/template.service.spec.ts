@@ -54,13 +54,13 @@ describe('TemplateService', () => {
       oauthProvider: 'google',
       email: 'test@example.com',
       name: 'Test User',
+      refreshToken: null,
       createdAt: date,
       updatedAt: date,
     };
 
     const createDto = {
       title: 'New Template',
-      description: 'Description',
       content: 'Content with {variable}',
       variables: [{ name: 'variable', type: 'text' as const }],
     };
@@ -72,9 +72,8 @@ describe('TemplateService', () => {
         id: 'tpl_new',
         creatorId: 'user-db-id-123',
         title: createDto.title,
-        description: createDto.description,
         content: createDto.content,
-        variable: createDto.variables,
+        variables: createDto.variables,
         createdAt: date,
         updatedAt: date,
       };
@@ -90,9 +89,8 @@ describe('TemplateService', () => {
         data: {
           creatorId: 'user-db-id-123',
           title: createDto.title,
-          description: createDto.description,
           content: createDto.content,
-          variable: createDto.variables,
+          variables: createDto.variables,
         },
       });
     });
@@ -130,6 +128,7 @@ describe('TemplateService', () => {
         oauthProvider: 'google',
         email: 'test@example.com',
         name: 'Test User',
+        refreshToken: null,
         createdAt: date,
         updatedAt: date,
       };
@@ -139,9 +138,8 @@ describe('TemplateService', () => {
           id: 'template_1',
           title: 'template_1',
           creatorId: 'user-db-id-123',
-          description: 'Description 1',
           content: 'Content 1',
-          variable: [
+          variables: [
             {
               name: 'keyword',
               type: 'test',
@@ -154,9 +152,8 @@ describe('TemplateService', () => {
           id: 'template_2',
           title: 'template_2',
           creatorId: 'user-db-id-123',
-          description: null,
           content: 'Content 2',
-          variable: [],
+          variables: [],
           createdAt: date,
           updatedAt: date,
         },
@@ -169,11 +166,9 @@ describe('TemplateService', () => {
 
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe('template_1');
-      expect(result[0].description).toBe('Description 1');
       expect(result[0]).toHaveProperty('variables');
       expect(Array.isArray(result[0].variables)).toBe(true);
       expect(result[1].id).toBe('template_2');
-      expect(result[1].description).toBeUndefined();
 
       expect(authService.getUserByOAuthId).toHaveBeenCalledWith('google-user-1');
       expect(prisma.template.findMany).toHaveBeenCalledWith({
@@ -191,6 +186,7 @@ describe('TemplateService', () => {
         oauthProvider: 'google',
         email: 'test@example.com',
         name: 'Test User',
+        refreshToken: null,
         createdAt: date,
         updatedAt: date,
       };
@@ -224,6 +220,7 @@ describe('TemplateService', () => {
         oauthProvider: 'google',
         email: 'test@example.com',
         name: 'Test User',
+        refreshToken: null,
         createdAt: date,
         updatedAt: date,
       };
@@ -232,9 +229,8 @@ describe('TemplateService', () => {
         id: 'tpl_1',
         creatorId: 'user-db-id-123',
         title: 'Test Template',
-        description: 'Description',
         content: 'Content',
-        variable: [],
+        variables: [],
         createdAt: date,
         updatedAt: date,
       };
@@ -259,6 +255,7 @@ describe('TemplateService', () => {
         oauthProvider: 'google',
         email: 'test@example.com',
         name: 'Test User',
+        refreshToken: null,
         createdAt: date,
         updatedAt: date,
       };
@@ -280,6 +277,7 @@ describe('TemplateService', () => {
         oauthProvider: 'google',
         email: 'test@example.com',
         name: 'Test User',
+        refreshToken: null,
         createdAt: date,
         updatedAt: date,
       };
@@ -288,9 +286,8 @@ describe('TemplateService', () => {
         id: 'tpl_1',
         creatorId: 'user-db-id-456',
         title: 'Test Template',
-        description: 'Description',
         content: 'Content',
-        variable: [],
+        variables: [],
         createdAt: date,
         updatedAt: date,
       };
@@ -313,6 +310,7 @@ describe('TemplateService', () => {
       oauthProvider: 'google',
       email: 'test@example.com',
       name: 'Test User',
+      refreshToken: null,
       createdAt: date,
       updatedAt: date,
     };
@@ -321,9 +319,8 @@ describe('TemplateService', () => {
       id: 'tpl_1',
       creatorId: 'user-db-id-123',
       title: 'Original Title',
-      description: 'Original Description',
       content: 'Original Content',
-      variable: [{ name: 'var1', type: 'text' }],
+      variables: [{ name: 'var1', type: 'text' }],
       createdAt: date,
       updatedAt: date,
     };
@@ -331,7 +328,6 @@ describe('TemplateService', () => {
     it('should update template successfully', async () => {
       const updateDto = {
         title: 'Updated Title',
-        description: 'Updated Description',
         content: 'Updated Content',
         variables: [{ name: 'var2', type: 'text' as const }],
       };
@@ -339,9 +335,8 @@ describe('TemplateService', () => {
       const updatedTemplate = {
         ...mockTemplate,
         title: updateDto.title,
-        description: updateDto.description,
         content: updateDto.content,
-        variable: updateDto.variables,
+        variables: updateDto.variables,
         updatedAt: new Date(),
       };
 
@@ -353,15 +348,13 @@ describe('TemplateService', () => {
 
       expect(result.id).toBe('tpl_1');
       expect(result.title).toBe('Updated Title');
-      expect(result.description).toBe('Updated Description');
       expect(result.content).toBe('Updated Content');
       expect(prisma.template.update).toHaveBeenCalledWith({
         where: { id: 'tpl_1' },
         data: {
           title: 'Updated Title',
-          description: 'Updated Description',
           content: 'Updated Content',
-          variable: updateDto.variables,
+          variables: updateDto.variables,
         },
       });
     });
@@ -435,7 +428,6 @@ describe('TemplateService', () => {
       const result = await service.update('tpl_1', 'google-user-1', partialUpdateDto);
 
       expect(result.title).toBe('Only Title Updated');
-      expect(result.description).toBe('Original Description');
       expect(prisma.template.update).toHaveBeenCalledWith({
         where: { id: 'tpl_1' },
         data: {
@@ -463,9 +455,8 @@ describe('TemplateService', () => {
         id: 'tpl_1',
         creatorId: 'user-db-id-123',
         title: 'Test Template',
-        description: 'Description',
         content: 'Content',
-        variable: [],
+        variables: [],
         createdAt: date,
         updatedAt: date,
       };
