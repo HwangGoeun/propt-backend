@@ -1,5 +1,1 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
-# 스테이징된 파일에 대해 lint & format
 npx lint-staged
