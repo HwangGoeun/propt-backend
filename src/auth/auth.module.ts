@@ -28,6 +28,6 @@ import { TokenService } from './token.service';
     GoogleConfigService,
     JwtConfigService,
   ],
-  exports: [AuthService, JwtAuthGuard],
+  exports: [AuthService, JwtAuthGuard, TokenService],
 })
 export class AuthModule {}

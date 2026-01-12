@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { McpModule } from './mcp/mcp.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { TemplateModule } from './template/template.module';
 
@@ -16,6 +17,7 @@ import { TemplateModule } from './template/template.module';
     PrismaModule,
     AuthModule,
     TemplateModule,
+    McpModule,
   ],
   controllers: [AppController],
   providers: [AppService],
