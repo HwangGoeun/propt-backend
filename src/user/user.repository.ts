@@ -6,16 +6,16 @@ import { PrismaService } from 'src/prisma/prisma.service';
 export class UserRepository {
   constructor(private prisma: PrismaService) {}
 
-  async createUser(data: Prisma.UserCreateInput) {
+  async create(data: Prisma.UserCreateInput) {
     return this.prisma.user.create({ data });
   }
 
-  async findByOAuthCredentials(provider: string, oauthId: string) {
+  async findByOAuthCredentials(oauthProvider: string, oauthId: string) {
     return this.prisma.user.findUnique({
       where: {
         oauthProvider_oauthId: {
-          oauthProvider: provider,
-          oauthId: oauthId,
+          oauthProvider,
+          oauthId,
         },
       },
     });
@@ -34,17 +34,10 @@ export class UserRepository {
     });
   }
 
-  async updateRefreshToken(oauthProvider: string, oauthId: string, refreshToken: string | null) {
-    return this.prisma.user.update({
-      where: {
-        oauthProvider_oauthId: {
-          oauthProvider,
-          oauthId,
-        },
-      },
-      data: {
-        refreshToken,
-      },
+  async updateRefreshToken(id: string, token: string | null) {
+    await this.prisma.user.update({
+      where: { id },
+      data: { refreshToken: token },
     });
   }
 }

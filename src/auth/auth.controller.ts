@@ -8,6 +8,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import ms from 'ms';
 import { JwtConfigService } from 'src/config/jwt.config';
@@ -76,6 +77,27 @@ export class AuthController {
         },
       },
     };
+  }
+
+  @Post('guest')
+  @ApiOperation({ summary: 'Guest login' })
+  @ApiResponse({
+    status: 201,
+    description: '게스트 로그인 성공 (토큰은 HttpOnly Cookie로 발급됨)',
+    headers: {
+      'Set-Cookie': {
+        description: 'accessToken, refreshToken',
+        schema: { type: 'string' },
+      },
+    },
+  })
+  async guestLogin(@Res({ passthrough: true }) res: Response) {
+    const tokens = await this.authService.guestLogin();
+
+    res.cookie('accessToken', tokens.accessToken, { httpOnly: true, path: '/' });
+    res.cookie('refreshToken', tokens.refreshToken, { httpOnly: true, path: '/' });
+
+    return { message: '게스트 로그인 성공' };
   }
 
   @Post('refresh')

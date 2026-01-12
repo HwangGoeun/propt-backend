@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { GoogleConfigService } from 'src/config/google.config';
 import { JwtConfigService } from 'src/config/jwt.config';
 import { PrismaModule } from 'src/prisma/prisma.module';
+import { UserModule } from 'src/user/user.module';
 import { UserRepository } from 'src/user/user.repository';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -14,7 +15,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { TokenService } from './token.service';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, PassportModule],
+  imports: [ConfigModule, PrismaModule, PassportModule, UserModule],
   controllers: [AuthController],
   providers: [
     AuthService,

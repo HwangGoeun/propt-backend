@@ -14,6 +14,22 @@ export class AuthService {
     private readonly tokenService: TokenService,
   ) {}
 
+  async guestLogin() {
+    const name = generateRandomUsername();
+    const oauthProvider = 'guest';
+    const oauthId = `guest_${Date.now()}_${name}`;
+    const user = await this.userRepository.create({
+      oauthProvider,
+      oauthId,
+      name,
+    });
+    const tokens = this.tokenService.generateTokens(oauthProvider, oauthId);
+
+    await this.userRepository.updateRefreshToken(user.id, tokens.refreshToken);
+
+    return tokens;
+  }
+
   async validateOAuthUser(oauthProfile: OAuthProfileDto): Promise<User> {
     const { provider, providerUserId, email } = oauthProfile;
 
@@ -37,7 +53,7 @@ export class AuthService {
 
     while (retryCount < maxRetries) {
       try {
-        const newUser = await this.userRepository.createUser({
+        const newUser = await this.userRepository.create({
           oauthProvider: provider,
           oauthId: providerUserId,
           email: email || null,
