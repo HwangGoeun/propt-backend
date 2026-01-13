@@ -5,7 +5,7 @@ import { BASE_URL } from '../config.js';
 export async function apiRequest(path: string, init: RequestInit = {}) {
   const tokens = TokenStore.load();
   if (!tokens) {
-    throw new Error('토큰이 없습니다. 먼저 auth.setTokens를 실행하세요.');
+    throw new Error('토큰이 없습니다. 먼저 propt_auth_login을 실행하세요.');
   }
 
   const requestUrl = `${BASE_URL}${path}`;

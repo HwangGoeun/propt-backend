@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { authLogout, authSetTokens } from './tools/auth.tool.js';
+import { authLogin, authLogout } from './tools/auth.tool.js';
 import { listTemplates } from './tools/templates.tool.js';
 
 const server = new McpServer({
@@ -9,28 +9,23 @@ const server = new McpServer({
   version: '0.0.1',
 });
 
-// TODO: 임시 툴. MCP 로그인 기능 구현 시 삭제 예정
+// 통합 로그인 툴
 server.registerTool(
-  'propt_auth_set_tokens',
+  'propt_auth_login',
   {
-    title: 'Auth: Set Tokens',
-    description: 'Access/Refresh 토큰을 저장합니다 (개발 / 1단계용)',
+    title: 'Propt: Login',
+    description:
+      '프로프트에 로그인합니다. 코드 없이 실행하면 로그인 URL을 안내하고, 코드와 함께 실행하면 로그인을 완료합니다.',
     inputSchema: {
-      accessToken: z.string().min(1),
-      refreshToken: z.string().min(1),
+      code: z.string().length(6).optional().describe('브라우저 로그인 후 받은 6자리 코드 (선택)'),
     },
   },
-  (input) => {
+  async (input) => {
     try {
-      authSetTokens(input);
+      const result = await authLogin(input.code);
 
       return {
-        content: [
-          {
-            type: 'text',
-            text: '토큰이 저장되었습니다. Propt를 자유롭게 이용해보세요!',
-          },
-        ],
+        content: [{ type: 'text', text: result.message }],
       };
     } catch (error) {
       return {
@@ -46,6 +41,7 @@ server.registerTool(
   },
 );
 
+// 로그아웃
 server.registerTool(
   'propt_auth_logout',
   {
@@ -55,10 +51,10 @@ server.registerTool(
   },
   () => {
     try {
-      authLogout();
+      const result = authLogout();
 
       return {
-        content: [{ type: 'text', text: '로그아웃이 완료되었습니다. 다음에 다시 만나요!' }],
+        content: [{ type: 'text', text: result.message }],
       };
     } catch (error) {
       return {
@@ -74,6 +70,7 @@ server.registerTool(
   },
 );
 
+// 템플릿 목록 조회
 server.registerTool(
   'propt_template_list',
   {

@@ -1,8 +1,9 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { GoogleConfigService } from 'src/config/google.config';
 import { JwtConfigService } from 'src/config/jwt.config';
+import { McpModule } from 'src/mcp/mcp.module';
 import { PrismaModule } from 'src/prisma/prisma.module';
 import { UserModule } from 'src/user/user.module';
 import { UserRepository } from 'src/user/user.repository';
@@ -15,7 +16,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { TokenService } from './token.service';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, PassportModule, UserModule],
+  imports: [ConfigModule, PrismaModule, PassportModule, UserModule, forwardRef(() => McpModule)],
   controllers: [AuthController],
   providers: [
     AuthService,
