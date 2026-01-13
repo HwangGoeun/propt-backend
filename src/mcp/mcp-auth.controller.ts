@@ -28,11 +28,6 @@ export class McpAuthController {
     description: '유효하지 않거나 만료된 코드',
   })
   async exchange(@Body() dto: ExchangeCodeDto) {
-    const tokens = await this.mcpAuthService.exchangeCode(dto.code);
-
-    return {
-      ok: true,
-      data: tokens,
-    };
+    return this.mcpAuthService.exchangeCode(dto.code);
   }
 }

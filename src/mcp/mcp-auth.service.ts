@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { TokenService } from 'src/auth/token.service';
+import { UserRepository } from 'src/user/user.repository';
 import { McpDeviceCodeRepository } from './mcp-device-code.repository';
 
 const CODE_LENGTH = 6;
@@ -10,6 +11,7 @@ export class McpAuthService {
   constructor(
     private readonly mcpDeviceCodeRepository: McpDeviceCodeRepository,
     private readonly tokenService: TokenService,
+    private readonly userRepository: UserRepository,
   ) {}
 
   /**
@@ -53,6 +55,7 @@ export class McpAuthService {
       deviceCode.user.oauthProvider,
     );
 
+    await this.userRepository.updateRefreshToken(deviceCode.userId, tokens.refreshToken);
     await this.mcpDeviceCodeRepository.delete(deviceCode.id);
 
     return tokens;
