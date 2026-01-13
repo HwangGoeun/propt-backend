@@ -32,7 +32,7 @@ export async function exchangeDeviceCode(code: string): Promise<Tokens> {
 
   const tokens = responseBody.data;
 
-  TokenStore.save({
+  await TokenStore.save({
     accessToken: tokens.accessToken,
     refreshToken: tokens.refreshToken,
   });

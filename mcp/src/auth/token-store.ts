@@ -1,29 +1,25 @@
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
-import { Tokens } from '../types/tokens.types';
+import keytar from 'keytar';
+import { Tokens } from '../types/tokens.types.js';
 
-const DIR = path.join(os.homedir(), '.propt');
-const FILE = path.join(DIR, 'token.json');
+const SERVICE = 'propt-mcp';
+const ACCOUNT = 'tokens';
 
 export class TokenStore {
-  static load(): Tokens | null {
-    if (!fs.existsSync(FILE)) return null;
-
+  static async load(): Promise<Tokens | null> {
     try {
-      return JSON.parse(fs.readFileSync(FILE, 'utf-8')) as Tokens;
+      const raw = await keytar.getPassword(SERVICE, ACCOUNT);
+
+      return raw ? (JSON.parse(raw) as Tokens) : null;
     } catch {
       return null;
     }
   }
 
-  static save(tokens: Tokens) {
-    if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
-
-    fs.writeFileSync(FILE, JSON.stringify(tokens, null, 2), 'utf-8');
+  static async save(tokens: Tokens): Promise<void> {
+    await keytar.setPassword(SERVICE, ACCOUNT, JSON.stringify(tokens));
   }
 
-  static clear() {
-    if (fs.existsSync(FILE)) fs.unlinkSync(FILE);
+  static async clear(): Promise<void> {
+    await keytar.deletePassword(SERVICE, ACCOUNT);
   }
 }

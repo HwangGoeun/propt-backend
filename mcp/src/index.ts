@@ -49,9 +49,9 @@ server.registerTool(
     description: '프로프트 서비스에서 로그아웃 합니다.',
     inputSchema: {},
   },
-  () => {
+  async () => {
     try {
-      const result = authLogout();
+      const result = await authLogout();
 
       return {
         content: [{ type: 'text', text: result.message }],

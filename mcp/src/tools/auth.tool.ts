@@ -41,8 +41,8 @@ export async function authLogin(code?: string) {
 /**
  * 로그아웃
  */
-export function authLogout() {
-  TokenStore.clear();
+export async function authLogout() {
+  await TokenStore.clear();
 
   return { ok: true, message: '로그아웃 완료!' };
 }
