@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { authLogin, authLogout } from './tools/auth.tool.js';
+import { executeBatch } from './tools/batch.tool.js';
 import { listTemplates } from './tools/templates.tool.js';
 
 const server = new McpServer({
@@ -87,6 +88,46 @@ server.registerTool(
           {
             type: 'text',
             text: JSON.stringify(templates, null, 2),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: `에러 발생: ${error instanceof Error ? error.message : String(error)}`,
+          },
+        ],
+      };
+    }
+  },
+);
+
+server.registerTool(
+  'propt_batch_execute',
+  {
+    title: 'Batch Execute Template',
+    description: '하나의 템플릿에 여러 변수 세트를 적용하여 배치 프롬프트를 생성합니다.',
+    inputSchema: {
+      templateId: z.string().describe('실행할 템플릿의 ID'),
+      variableSets: z
+        .array(z.record(z.string(), z.string()))
+        .describe(
+          '적용할 변수 세트 배열 (예: [{ 과일: "바나나", 언어: "영어" }, { 과일: "사과", 언어: "영어" }])',
+        ),
+    },
+  },
+  async (input) => {
+    try {
+      const result = await executeBatch(input.templateId, input.variableSets);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(result, null, 2),
           },
         ],
       };

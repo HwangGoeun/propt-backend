@@ -1,6 +1,7 @@
 import { refreshTokens } from '../auth/auth-client.js';
 import { TokenStore } from '../auth/token-store.js';
 import { BASE_URL } from '../config.js';
+import type { Template } from '../types/template.types.js';
 
 export async function apiRequest(path: string, init: RequestInit = {}) {
   const tokens = await TokenStore.load();
@@ -36,4 +37,14 @@ export async function apiRequest(path: string, init: RequestInit = {}) {
   });
 
   return retryResponse;
+}
+
+export async function getTemplate(id: string): Promise<Template> {
+  const response = await apiRequest(`/templates/${id}`);
+
+  if (!response.ok) {
+    throw new Error(`템플릿 조회 실패: ${response.status}`);
+  }
+
+  return response.json() as Promise<Template>;
 }
