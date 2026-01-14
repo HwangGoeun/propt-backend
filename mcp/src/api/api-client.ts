@@ -2,11 +2,26 @@ import { refreshTokens } from '../auth/auth-client.js';
 import { TokenStore } from '../auth/token-store.js';
 import { BASE_URL } from '../config.js';
 import type { Template } from '../types/template.types.js';
+import { isTokenExpiringSoon } from '../utils/jwt.util.js';
 
 export async function apiRequest(path: string, init: RequestInit = {}) {
-  const tokens = await TokenStore.load();
+  let tokens = await TokenStore.load();
   if (!tokens) {
     throw new Error('토큰이 없습니다. 먼저 propt_auth_login을 실행하세요.');
+  }
+
+  // Proactive Refresh: Access token이 30분 이하로 남았으면 미리 갱신
+  if (isTokenExpiringSoon(tokens.accessToken, 1800)) {
+    try {
+      await refreshTokens();
+      const newTokens = await TokenStore.load();
+      if (!newTokens) {
+        throw new Error('토큰 갱신 후 토큰을 찾을 수 없습니다. 다시 로그인해주세요.');
+      }
+      tokens = newTokens;
+    } catch (error) {
+      console.error('Proactive refresh 실패:', error);
+    }
   }
 
   const requestUrl = `${BASE_URL}${path}`;
@@ -19,6 +34,7 @@ export async function apiRequest(path: string, init: RequestInit = {}) {
     },
   });
 
+  // 401 에러 발생 시 한 번 더 refresh 시도 (Proactive refresh가 실패했을 경우 대비)
   if (firstResponse.status !== 401) return firstResponse;
 
   await refreshTokens();
