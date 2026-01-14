@@ -46,8 +46,14 @@ describe('AuthService', () => {
       'mock_refresh_token',
     );
     expect(result).toEqual({
-      accessToken: 'mock_access_token',
-      refreshToken: 'mock_refresh_token',
+      user: {
+        id: 'user-123',
+        name: 'user_abc',
+      },
+      tokens: {
+        accessToken: 'mock_access_token',
+        refreshToken: 'mock_refresh_token',
+      },
     });
   });
 });

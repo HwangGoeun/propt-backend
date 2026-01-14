@@ -1,6 +1,7 @@
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TokenService } from '../auth/token.service';
+import { UserRepository } from '../user/user.repository';
 import { McpAuthService } from './mcp-auth.service';
 import { McpDeviceCodeRepository } from './mcp-device-code.repository';
 
@@ -17,6 +18,10 @@ const mockTokenService = {
   }),
 };
 
+const mockUserRepository = {
+  updateRefreshToken: jest.fn(),
+};
+
 describe('McpAuthService', () => {
   let service: McpAuthService;
   let deviceCodeRepository: typeof mockDeviceCodeRepository;
@@ -29,6 +34,7 @@ describe('McpAuthService', () => {
         McpAuthService,
         { provide: McpDeviceCodeRepository, useValue: mockDeviceCodeRepository },
         { provide: TokenService, useValue: mockTokenService },
+        { provide: UserRepository, useValue: mockUserRepository },
       ],
     }).compile();
 

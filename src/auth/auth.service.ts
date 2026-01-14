@@ -27,7 +27,7 @@ export class AuthService {
 
     await this.userRepository.updateRefreshToken(user.id, tokens.refreshToken);
 
-    return tokens;
+    return { user, tokens };
   }
 
   async validateOAuthUser(oauthProfile: OAuthProfileDto): Promise<User> {

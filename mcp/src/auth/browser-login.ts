@@ -1,4 +1,4 @@
-import { BASE_URL } from '../config.js';
+import { BASE_URL, FRONTEND_URL } from '../config.js';
 import { ApiResponse } from '../types/api-response.types.js';
 import { Tokens } from '../types/tokens.types.js';
 import { TokenStore } from './token-store.js';
@@ -7,7 +7,7 @@ import { TokenStore } from './token-store.js';
  * MCP 로그인 URL 반환
  */
 export function getLoginUrl(): string {
-  return `${BASE_URL}/auth/google?state=mcp`;
+  return `${FRONTEND_URL}/login?state=mcp`;
 }
 
 /**

@@ -1,6 +1,7 @@
 import { refreshTokens } from '../auth/auth-client.js';
 import { TokenStore } from '../auth/token-store.js';
 import { BASE_URL } from '../config.js';
+import { unwrapApiResponse, type ApiSuccessResponse } from '../types/api-response.types.js';
 import type { Template } from '../types/template.types.js';
 import { isTokenExpiringSoon } from '../utils/jwt.util.js';
 
@@ -62,5 +63,7 @@ export async function getTemplate(id: string): Promise<Template> {
     throw new Error(`템플릿 조회 실패: ${response.status}`);
   }
 
-  return response.json() as Promise<Template>;
+  const payload = (await response.json()) as ApiSuccessResponse<Template>;
+
+  return unwrapApiResponse(payload);
 }

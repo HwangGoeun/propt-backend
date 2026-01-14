@@ -117,13 +117,28 @@ export class AuthController {
       },
     },
   })
-  async guestLogin(@Res({ passthrough: true }) res: Response) {
-    const tokens = await this.authService.guestLogin();
+  async guestLogin(@Body() body: { state?: string }, @Res({ passthrough: true }) res: Response) {
+    const { user, tokens } = await this.authService.guestLogin();
+
+    // state=mcp인 경우 디바이스 코드 발급
+    if (body.state === 'mcp') {
+      const code = await this.mcpAuthService.saveDeviceCode(user.id);
+
+      return {
+        ok: true,
+        data: {
+          code,
+        },
+      };
+    }
 
     res.cookie('accessToken', tokens.accessToken, { httpOnly: true, path: '/' });
     res.cookie('refreshToken', tokens.refreshToken, { httpOnly: true, path: '/' });
 
-    return { message: '게스트 로그인 성공' };
+    return {
+      ok: true,
+      data: null,
+    };
   }
 
   @Post('refresh')
