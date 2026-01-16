@@ -1,0 +1,45 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String      @id @default(cuid())
+  oauthProvider String
+  oauthId       String
+  name          String
+  email         String?
+  refreshToken  String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  mcpDeviceCodes McpDeviceCode[]
+
+  @@unique([oauthProvider, oauthId])
+}
+
+model Template {
+  id          String      @id @default(cuid())
+  creatorId   String
+  title       String
+  content     String      @db.Text
+  variables   Json[]      @default([])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([creatorId, title])
+}
+
+model McpDeviceCode {
+  id          String      @id @default(cuid())
+  code        String      @unique
+  userId      String
+  expiresAt   DateTime
+  createdAt   DateTime    @default(now())
+
+  user        User        @relation(fields: [userId], references: [id])
+}
