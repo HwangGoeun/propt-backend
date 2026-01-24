@@ -117,11 +117,14 @@ export class AuthController {
       },
     },
   })
-  async guestLogin(@Body() body: { state?: string }, @Res({ passthrough: true }) res: Response) {
+  async guestLogin(
+    @Body() body: { state?: string } = {},
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const { user, tokens } = await this.authService.guestLogin();
 
     // state=mcp인 경우 디바이스 코드 발급
-    if (body.state === 'mcp') {
+    if (body?.state === 'mcp') {
       const code = await this.mcpAuthService.saveDeviceCode(user.id);
 
       return {
@@ -132,8 +135,18 @@ export class AuthController {
       };
     }
 
-    res.cookie('accessToken', tokens.accessToken, { httpOnly: true, path: '/' });
-    res.cookie('refreshToken', tokens.refreshToken, { httpOnly: true, path: '/' });
+    res.cookie('accessToken', tokens.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+    });
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+    });
 
     return {
       ok: true,
