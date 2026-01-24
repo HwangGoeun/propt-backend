@@ -261,7 +261,11 @@ export class McpServerService {
       'propt_template_list',
       {
         title: 'List Templates',
-        description: '저장된 프롬프트 템플릿 목록을 조회합니다. (로그인 필요)',
+        description: `저장된 프롬프트 템플릿 목록을 조회합니다. (로그인 필요)
+
+⚠️ 중요: 템플릿 목록은 사용자가 언제든 추가/삭제/수정할 수 있습니다.
+템플릿을 사용하기 전에 반드시 이 도구를 호출하여 최신 목록을 확인하세요.
+이전에 조회한 결과를 재사용하지 마세요.`,
         inputSchema: {},
       },
       async () => {
@@ -306,7 +310,13 @@ export class McpServerService {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify(templates, null, 2),
+                text: `📋 템플릿 목록 (조회 시점: ${new Date().toISOString()})
+
+${JSON.stringify(templates, null, 2)}
+
+---
+⚠️ 이 목록은 조회 시점의 데이터입니다.
+다음 요청 시 반드시 다시 조회하세요.`,
               },
             ],
           };
@@ -329,7 +339,12 @@ export class McpServerService {
       'propt_get_template',
       {
         title: 'Get Template',
-        description: '특정 템플릿의 상세 정보(내용, 변수)를 조회합니다. (로그인 필요)',
+        description: `특정 템플릿의 상세 정보(내용, 변수)를 조회합니다. (로그인 필요)
+
+⚠️ 중요: 템플릿 내용은 사용자가 언제든 수정할 수 있습니다.
+템플릿을 실행할 때마다 반드시 이 도구를 호출하여 최신 데이터를 가져오세요.
+이전에 조회한 결과를 절대 재사용하지 마세요.
+같은 템플릿이라도 매번 새로 조회해야 합니다.`,
         inputSchema: {
           templateId: z.string().describe('템플릿 ID'),
         },
@@ -368,7 +383,14 @@ export class McpServerService {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify(template, null, 2),
+                text: `📄 템플릿 상세 (조회 시점: ${new Date().toISOString()})
+
+${JSON.stringify(template, null, 2)}
+
+---
+⚠️ 이 데이터는 조회 시점의 내용입니다.
+같은 템플릿이라도 다음 실행 시 반드시 다시 조회하세요.
+사용자가 웹에서 내용을 수정했을 수 있습니다.`,
               },
             ],
           };
@@ -391,8 +413,10 @@ export class McpServerService {
       'propt_prepare_batch',
       {
         title: 'Prepare Batch Execution',
-        description:
-          '배치 실행을 준비합니다. 템플릿과 변수 세트를 받아 실행할 프롬프트들을 생성합니다. (로그인 필요)',
+        description: `배치 실행을 준비합니다. 템플릿과 변수 세트를 받아 실행할 프롬프트들을 생성합니다. (로그인 필요)
+
+⚠️ 중요: 이 도구는 실행할 때마다 최신 템플릿 데이터를 조회합니다.
+이전에 준비한 배치 결과를 재사용하지 마세요.`,
         inputSchema: {
           templateId: z.string().describe('템플릿 ID'),
           variableSets: z
@@ -453,7 +477,12 @@ ${prompts.map((p) => `\n---\n**[${p.index}/${prompts.length}]**\n${p.prompt}`).j
 `;
 
           return {
-            content: [{ type: 'text', text: guide }],
+            content: [
+              {
+                type: 'text',
+                text: `📦 배치 준비 완료 (조회 시점: ${new Date().toISOString()})\n${guide}\n---\n⚠️ 이 배치 데이터는 조회 시점의 템플릿 내용 기준입니다.\n다음 배치 실행 시 반드시 다시 이 도구를 호출하세요.`,
+              },
+            ],
           };
         } catch (error) {
           return {
