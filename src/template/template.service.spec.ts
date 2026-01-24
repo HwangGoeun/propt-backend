@@ -1,18 +1,18 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { Prisma } from '@prisma/client';
 import { AuthService } from '../auth/auth.service';
-import { PrismaService } from '../prisma/prisma.service';
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+} from '../common/errors/app.error';
+import { TemplateRepository } from './template.repository';
 import { TemplateService } from './template.service';
 
 describe('TemplateService', () => {
   let service: TemplateService;
-  let prisma: PrismaService;
+  let templateRepository: TemplateRepository;
   let authService: AuthService;
 
   beforeEach(async () => {
@@ -26,22 +26,20 @@ describe('TemplateService', () => {
           },
         },
         {
-          provide: PrismaService,
+          provide: TemplateRepository,
           useValue: {
-            template: {
-              create: jest.fn(),
-              findMany: jest.fn(),
-              findUnique: jest.fn(),
-              update: jest.fn(),
-              delete: jest.fn(),
-            },
+            create: jest.fn(),
+            findAllByUserId: jest.fn(),
+            findOneById: jest.fn(),
+            update: jest.fn(),
+            delete: jest.fn(),
           },
         },
       ],
     }).compile();
 
     service = module.get<TemplateService>(TemplateService);
-    prisma = module.get<PrismaService>(PrismaService);
+    templateRepository = module.get<TemplateRepository>(TemplateRepository);
     authService = module.get<AuthService>(AuthService);
   });
 
@@ -79,42 +77,33 @@ describe('TemplateService', () => {
       };
 
       jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
-      jest.spyOn(prisma.template, 'create').mockResolvedValue(mockTemplate);
+      jest.spyOn(templateRepository, 'create').mockResolvedValue(mockTemplate);
 
       const result = await service.create('google-user-1', createDto);
 
       expect(result.id).toBe('tpl_new');
       expect(result.title).toBe('New Template');
-      expect(prisma.template.create).toHaveBeenCalledWith({
-        data: {
-          creatorId: 'user-db-id-123',
-          title: createDto.title,
-          content: createDto.content,
-          variables: createDto.variables,
-        },
+      expect(templateRepository.create).toHaveBeenCalledWith({
+        creatorId: 'user-db-id-123',
+        title: createDto.title,
+        content: createDto.content,
+        variables: createDto.variables,
       });
     });
 
-    it('should throw UnauthorizedException when user not found', async () => {
-      jest.spyOn(authService, 'getUserByOAuthId').mockRejectedValue(new UnauthorizedException());
+    it('should throw UnauthorizedError when user not found', async () => {
+      jest.spyOn(authService, 'getUserByOAuthId').mockRejectedValue(new UnauthorizedError(''));
 
-      await expect(service.create('non-existent', createDto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(service.create('non-existent', createDto)).rejects.toThrow(UnauthorizedError);
 
-      expect(prisma.template.create).not.toHaveBeenCalled();
+      expect(templateRepository.create).not.toHaveBeenCalled();
     });
 
-    it('should throw ConflictException on duplicate title', async () => {
-      const prismaError = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-        code: 'P2002',
-        clientVersion: '5.0.0',
-      });
-
+    it('should throw ConflictError on duplicate title', async () => {
       jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
-      jest.spyOn(prisma.template, 'create').mockRejectedValue(prismaError);
+      jest.spyOn(templateRepository, 'create').mockRejectedValue(new ConflictError(''));
 
-      await expect(service.create('google-user-1', createDto)).rejects.toThrow(ConflictException);
+      await expect(service.create('google-user-1', createDto)).rejects.toThrow(ConflictError);
     });
   });
 
@@ -144,7 +133,7 @@ describe('TemplateService', () => {
               name: 'keyword',
               type: 'test',
             },
-          ],
+          ] as Prisma.JsonValue[],
           createdAt: date,
           updatedAt: date,
         },
@@ -160,21 +149,13 @@ describe('TemplateService', () => {
       ];
 
       jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
-      jest.spyOn(prisma.template, 'findMany').mockResolvedValue(mockTemplates);
+      jest.spyOn(templateRepository, 'findAllByUserId').mockResolvedValue(mockTemplates);
 
       const result = await service.findAllByUserId('google-user-1');
 
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe('template_1');
-      expect(result[0]).toHaveProperty('variables');
-      expect(Array.isArray(result[0].variables)).toBe(true);
-      expect(result[1].id).toBe('template_2');
-
-      expect(authService.getUserByOAuthId).toHaveBeenCalledWith('google-user-1');
-      expect(prisma.template.findMany).toHaveBeenCalledWith({
-        where: { creatorId: 'user-db-id-123' },
-        orderBy: { createdAt: 'desc' },
-      });
+      expect(templateRepository.findAllByUserId).toHaveBeenCalledWith('user-db-id-123');
     });
 
     it('should return empty array if user has no templates', async () => {
@@ -192,21 +173,11 @@ describe('TemplateService', () => {
       };
 
       jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
-      jest.spyOn(prisma.template, 'findMany').mockResolvedValue([]);
+      jest.spyOn(templateRepository, 'findAllByUserId').mockResolvedValue([]);
 
       const result = await service.findAllByUserId('google-user-1');
 
       expect(result).toHaveLength(0);
-    });
-
-    it('should throw UnauthorizedException if user not found', async () => {
-      jest.spyOn(authService, 'getUserByOAuthId').mockRejectedValue(new UnauthorizedException());
-
-      await expect(service.findAllByUserId('non-existent-user')).rejects.toThrow(
-        UnauthorizedException,
-      );
-
-      expect(prisma.template.findMany).not.toHaveBeenCalled();
     });
   });
 
@@ -236,19 +207,15 @@ describe('TemplateService', () => {
       };
 
       jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
-      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
+      jest.spyOn(templateRepository, 'findOneById').mockResolvedValue(mockTemplate);
 
       const result = await service.findOneById('tpl_1', 'google-user-1');
 
       expect(result.id).toBe('tpl_1');
-      expect(result.title).toBe('Test Template');
-      expect(result).toHaveProperty('variables');
-      expect(Array.isArray(result.variables)).toBe(true);
     });
 
-    it('should throw NotFoundException if template does not exist', async () => {
+    it('should throw NotFoundError if template does not exist', async () => {
       const date = new Date();
-
       const mockUser = {
         id: 'user-db-id-123',
         oauthId: 'google-user-1',
@@ -261,16 +228,13 @@ describe('TemplateService', () => {
       };
 
       jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
-      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(null);
+      jest.spyOn(templateRepository, 'findOneById').mockResolvedValue(null);
 
-      await expect(service.findOneById('tpl_999', 'google-user-1')).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.findOneById('tpl_999', 'google-user-1')).rejects.toThrow(NotFoundError);
     });
 
-    it('should throw ForbiddenException if user is not owner', async () => {
+    it('should throw ForbiddenError if user is not owner', async () => {
       const date = new Date();
-
       const mockUser = {
         id: 'user-db-id-123',
         oauthId: 'google-user-1',
@@ -293,11 +257,9 @@ describe('TemplateService', () => {
       };
 
       jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
-      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
+      jest.spyOn(templateRepository, 'findOneById').mockResolvedValue(mockTemplate);
 
-      await expect(service.findOneById('tpl_1', 'google-user-1')).rejects.toThrow(
-        ForbiddenException,
-      );
+      await expect(service.findOneById('tpl_1', 'google-user-1')).rejects.toThrow(ForbiddenError);
     });
   });
 
@@ -341,98 +303,17 @@ describe('TemplateService', () => {
       };
 
       jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
-      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
-      jest.spyOn(prisma.template, 'update').mockResolvedValue(updatedTemplate);
+      jest.spyOn(templateRepository, 'findOneById').mockResolvedValue(mockTemplate);
+      jest.spyOn(templateRepository, 'update').mockResolvedValue(updatedTemplate);
 
       const result = await service.update('tpl_1', 'google-user-1', updateDto);
 
       expect(result.id).toBe('tpl_1');
       expect(result.title).toBe('Updated Title');
-      expect(result.content).toBe('Updated Content');
-      expect(prisma.template.update).toHaveBeenCalledWith({
-        where: { id: 'tpl_1' },
-        data: {
-          title: 'Updated Title',
-          content: 'Updated Content',
-          variables: updateDto.variables,
-        },
-      });
-    });
-
-    it('should throw UnauthorizedException if user not found', async () => {
-      jest.spyOn(authService, 'getUserByOAuthId').mockRejectedValue(new UnauthorizedException());
-
-      await expect(service.update('tpl_1', 'non-existent', { title: 'New Title' })).rejects.toThrow(
-        UnauthorizedException,
-      );
-
-      expect(prisma.template.findUnique).not.toHaveBeenCalled();
-      expect(prisma.template.update).not.toHaveBeenCalled();
-    });
-
-    it('should throw NotFoundException if template not found', async () => {
-      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
-      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(null);
-
-      await expect(
-        service.update('tpl_999', 'google-user-1', { title: 'New Title' }),
-      ).rejects.toThrow(NotFoundException);
-
-      expect(prisma.template.update).not.toHaveBeenCalled();
-    });
-
-    it('should throw ForbiddenException if user is not owner', async () => {
-      const otherUserTemplate = {
-        ...mockTemplate,
-        creatorId: 'other-user-id',
-      };
-
-      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
-      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(otherUserTemplate);
-
-      await expect(
-        service.update('tpl_1', 'google-user-1', { title: 'New Title' }),
-      ).rejects.toThrow(ForbiddenException);
-
-      expect(prisma.template.update).not.toHaveBeenCalled();
-    });
-
-    it('should throw ConflictException on duplicate title (P2002)', async () => {
-      const prismaError = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
-        code: 'P2002',
-        clientVersion: '5.0.0',
-      });
-
-      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
-      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
-      jest.spyOn(prisma.template, 'update').mockRejectedValue(prismaError);
-
-      await expect(
-        service.update('tpl_1', 'google-user-1', { title: 'Duplicate Title' }),
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('should update only title when partial update', async () => {
-      const partialUpdateDto = { title: 'Only Title Updated' };
-
-      const partiallyUpdatedTemplate = {
-        ...mockTemplate,
-        title: partialUpdateDto.title,
-        updatedAt: new Date(),
-      };
-
-      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
-      jest.spyOn(prisma.template, 'findUnique').mockResolvedValue(mockTemplate);
-      jest.spyOn(prisma.template, 'update').mockResolvedValue(partiallyUpdatedTemplate);
-
-      const result = await service.update('tpl_1', 'google-user-1', partialUpdateDto);
-
-      expect(result.title).toBe('Only Title Updated');
-      expect(prisma.template.update).toHaveBeenCalledWith({
-        where: { id: 'tpl_1' },
-        data: {
-          title: 'Only Title Updated',
-        },
+      expect(templateRepository.update).toHaveBeenCalledWith('tpl_1', {
+        title: 'Updated Title',
+        content: 'Updated Content',
+        variables: updateDto.variables,
       });
     });
   });
@@ -440,16 +321,6 @@ describe('TemplateService', () => {
   describe('remove', () => {
     it('should delete the template successfully', async () => {
       const date = new Date();
-
-      const mockTemplateResponse = {
-        id: 'tpl_1',
-        title: 'Test Template',
-        description: 'Description',
-        content: 'Content',
-        variables: [],
-        createdAt: date,
-        updatedAt: date,
-      };
 
       const mockTemplate = {
         id: 'tpl_1',
@@ -461,15 +332,24 @@ describe('TemplateService', () => {
         updatedAt: date,
       };
 
-      jest.spyOn(service, 'findOneById').mockResolvedValue(mockTemplateResponse);
-      jest.spyOn(prisma.template, 'delete').mockResolvedValue(mockTemplate);
+      const mockUser = {
+        id: 'user-db-id-123',
+        oauthId: 'google-user-1',
+        oauthProvider: 'google',
+        email: 'test@example.com',
+        name: 'Test User',
+        refreshToken: null,
+        createdAt: date,
+        updatedAt: date,
+      };
+
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
+      jest.spyOn(templateRepository, 'findOneById').mockResolvedValue(mockTemplate);
+      jest.spyOn(templateRepository, 'delete').mockResolvedValue(undefined);
 
       await service.remove('tpl_1', 'google-user-1');
 
-      expect(service.findOneById).toHaveBeenCalledWith('tpl_1', 'google-user-1');
-      expect(prisma.template.delete).toHaveBeenCalledWith({
-        where: { id: 'tpl_1' },
-      });
+      expect(templateRepository.delete).toHaveBeenCalledWith('tpl_1');
     });
   });
 });

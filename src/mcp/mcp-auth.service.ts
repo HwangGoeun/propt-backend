@@ -1,5 +1,6 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { TokenService } from 'src/auth/token.service';
+import { UnauthorizedError } from 'src/common/errors/app.error';
 import { UserRepository } from 'src/user/user.repository';
 import { McpDeviceCodeRepository } from './mcp-device-code.repository';
 
@@ -14,9 +15,6 @@ export class McpAuthService {
     private readonly userRepository: UserRepository,
   ) {}
 
-  /**
-   * 6자리 랜덤 코드 생성 (헷갈리는 문자 제외: 0,O,1,I)
-   */
   private generateRandomCode(): string {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
     let code = '';
@@ -28,10 +26,7 @@ export class McpAuthService {
     return code;
   }
 
-  /**
-   * 디바이스 코드 생성 및 저장
-   */
-  async saveDeviceCode(userId: string): Promise<string> {
+  async generateAndSaveDeviceCode(userId: string): Promise<string> {
     const code = this.generateRandomCode();
     const expiresAt = new Date(Date.now() + CODE_EXPIRY_MINUTES * 60 * 1000);
 
@@ -40,14 +35,11 @@ export class McpAuthService {
     return code;
   }
 
-  /**
-   * 코드 전송 → 토큰 발급
-   */
-  async exchangeCode(code: string) {
+  async exchangeDeviceCodeForTokens(code: string) {
     const deviceCode = await this.mcpDeviceCodeRepository.findValidCode(code.toUpperCase());
 
     if (!deviceCode) {
-      throw new UnauthorizedException('유효하지 않거나 만료된 코드입니다.');
+      throw new UnauthorizedError('유효하지 않거나 만료된 코드입니다.');
     }
 
     const tokens = this.tokenService.generateTokens(

@@ -8,6 +8,7 @@ type NestErrorResponse = {
   details?: unknown;
   error?: string;
   statusCode?: number;
+  errorCode?: string;
 };
 
 @Catch()
@@ -22,7 +23,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const rawResponse = exception instanceof HttpException ? exception.getResponse() : null;
 
     const { message, details } = extractMessageAndDetails(status, rawResponse, exception);
-    const code = mapStatusToCode(status, rawResponse);
+    const code = extractErrorCode(status, rawResponse);
 
     const body: ApiErrorResponse = {
       ok: false,
@@ -102,9 +103,14 @@ function defaultMessageByStatus(status: HttpStatus): string {
   }
 }
 
-function mapStatusToCode(status: HttpStatus, rawResponse: string | object | null): string {
+function extractErrorCode(status: HttpStatus, rawResponse: string | object | null): string {
   if (rawResponse && typeof rawResponse === 'object') {
     const raw = rawResponse as NestErrorResponse;
+
+    // AppError structure support
+    if (typeof raw.errorCode === 'string') {
+      return raw.errorCode;
+    }
 
     if (raw.details != null || Array.isArray(raw.message)) {
       return ERROR_CODE.VALIDATION_ERROR;

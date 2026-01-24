@@ -1,6 +1,6 @@
-import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TokenService } from '../auth/token.service';
+import { UnauthorizedError } from '../common/errors/app.error';
 import { UserRepository } from '../user/user.repository';
 import { McpAuthService } from './mcp-auth.service';
 import { McpDeviceCodeRepository } from './mcp-device-code.repository';
@@ -42,11 +42,11 @@ describe('McpAuthService', () => {
     deviceCodeRepository = module.get(McpDeviceCodeRepository);
   });
 
-  describe('createDeviceCode', () => {
+  describe('generateAndSaveDeviceCode', () => {
     it('6자리 코드를 생성하고 DB에 저장해야 한다', async () => {
       deviceCodeRepository.create.mockResolvedValue({ id: 'code-123' });
 
-      const code = await service.saveDeviceCode('user-123');
+      const code = await service.generateAndSaveDeviceCode('user-123');
 
       expect(code).toHaveLength(6);
       expect(code).toMatch(/^[A-Z0-9]+$/);
@@ -58,7 +58,7 @@ describe('McpAuthService', () => {
     });
   });
 
-  describe('exchangeCode', () => {
+  describe('exchangeDeviceCodeForTokens', () => {
     it('유효한 코드로 토큰을 발급해야 한다', async () => {
       const mockDeviceCode = {
         id: 'code-123',
@@ -67,7 +67,7 @@ describe('McpAuthService', () => {
       };
       deviceCodeRepository.findValidCode.mockResolvedValue(mockDeviceCode);
 
-      const result = await service.exchangeCode('ABC123');
+      const result = await service.exchangeDeviceCodeForTokens('ABC123');
 
       expect(deviceCodeRepository.findValidCode).toHaveBeenCalledWith('ABC123');
       expect(mockTokenService.generateTokens).toHaveBeenCalledWith('oauth-123', 'google');
@@ -78,10 +78,12 @@ describe('McpAuthService', () => {
       });
     });
 
-    it('유효하지 않은 코드면 UnauthorizedException을 던져야 한다', async () => {
+    it('유효하지 않은 코드면 UnauthorizedError을 던져야 한다', async () => {
       deviceCodeRepository.findValidCode.mockResolvedValue(null);
 
-      await expect(service.exchangeCode('INVALID')).rejects.toThrow(UnauthorizedException);
+      await expect(service.exchangeDeviceCodeForTokens('INVALID')).rejects.toThrow(
+        UnauthorizedError,
+      );
     });
 
     it('소문자 코드도 대문자로 변환하여 처리해야 한다', async () => {
@@ -92,7 +94,7 @@ describe('McpAuthService', () => {
       };
       deviceCodeRepository.findValidCode.mockResolvedValue(mockDeviceCode);
 
-      await service.exchangeCode('abc123');
+      await service.exchangeDeviceCodeForTokens('abc123');
 
       expect(deviceCodeRepository.findValidCode).toHaveBeenCalledWith('ABC123');
     });

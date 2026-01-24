@@ -6,7 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
 const mockAuthService = {
-  guestLogin: jest.fn().mockResolvedValue({
+  loginAsGuest: jest.fn().mockResolvedValue({
     user: {
       id: 'user-123',
       name: 'user_abc',
@@ -21,7 +21,7 @@ const mockAuthService = {
 const mockJwtConfigService = {};
 
 const mockMcpAuthService = {
-  saveDeviceCode: jest.fn(),
+  generateAndSaveDeviceCode: jest.fn(),
 };
 
 const mockResponse = {
@@ -56,9 +56,9 @@ describe('AuthController', () => {
   });
 
   it('guestLogin()은 쿠키를 설정하고 메시지를 반환해야 한다', async () => {
-    const result = await controller.guestLogin({}, mockResponse);
+    const result = await controller.loginAsGuest({}, mockResponse);
 
-    expect(mockAuthService.guestLogin).toHaveBeenCalled();
+    expect(mockAuthService.loginAsGuest).toHaveBeenCalled();
     expect(mockResponse.cookie).toHaveBeenCalledWith(
       'accessToken',
       'accessToken_123',

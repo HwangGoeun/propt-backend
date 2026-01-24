@@ -1,6 +1,7 @@
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { ERROR_CODE } from 'src/common/constants/error-code';
+import { SystemError, UnauthorizedError } from 'src/common/errors/app.error';
 import { generateRandomUsername } from 'src/common/utils/user-name.util';
 import { UserRepository } from 'src/user/user.repository';
 import { OAuthProfileDto } from './dto/oauth-profile.dto';
@@ -14,15 +15,17 @@ export class AuthService {
     private readonly tokenService: TokenService,
   ) {}
 
-  async guestLogin() {
+  async loginAsGuest() {
     const name = generateRandomUsername();
     const oauthProvider = 'guest';
     const oauthId = `guest_${Date.now()}_${name}`;
+
     const user = await this.userRepository.create({
       oauthProvider,
       oauthId,
       name,
     });
+
     const tokens = this.tokenService.generateTokens(oauthId, oauthProvider);
 
     await this.userRepository.updateRefreshToken(user.id, tokens.refreshToken);
@@ -30,14 +33,11 @@ export class AuthService {
     return { user, tokens };
   }
 
-  async validateOAuthUser(oauthProfile: OAuthProfileDto): Promise<User> {
+  async findOrCreateOAuthUser(oauthProfile: OAuthProfileDto): Promise<User> {
     const { provider, providerUserId, email } = oauthProfile;
 
     if (!providerUserId) {
-      throw new UnauthorizedException({
-        errorCode: ERROR_CODE.OAUTH_PROFILE_INVALID,
-        message: 'Provider user ID is required',
-      });
+      throw new UnauthorizedError('Provider user ID is required', ERROR_CODE.OAUTH_PROFILE_INVALID);
     }
 
     const existingUser = await this.userRepository.findByOAuthCredentials(provider, providerUserId);
@@ -46,39 +46,38 @@ export class AuthService {
       return existingUser;
     }
 
-    // TODO: OAuth로부터 받은 사용자 이름 + UUID 사용하여 unique한 userName으로 저장할 수 있도록 구현 (UX 고려)
-    let userName = generateRandomUsername();
-    let retryCount = 0;
+    return this.createUserWithRetry(provider, providerUserId, email);
+  }
+
+  private async createUserWithRetry(
+    provider: string,
+    providerUserId: string,
+    email?: string,
+  ): Promise<User> {
     const maxRetries = 3;
+    let retryCount = 0;
 
     while (retryCount < maxRetries) {
       try {
-        const newUser = await this.userRepository.create({
+        const userName = generateRandomUsername();
+        return await this.userRepository.create({
           oauthProvider: provider,
           oauthId: providerUserId,
           email: email || null,
           name: userName,
         });
-
-        return newUser;
       } catch (error) {
-        // Prisma unique constraint error (P2002)
         if (error instanceof Error && 'code' in error && error.code === 'P2002') {
           retryCount++;
-          userName = generateRandomUsername();
-        } else {
-          throw new InternalServerErrorException({
-            errorCode: ERROR_CODE.USER_CONFLICT,
-            message: 'Failed to create user',
-            details: error,
-          });
+          continue;
         }
+
+        throw new SystemError('Failed to create user', error);
       }
     }
 
-    throw new InternalServerErrorException({
+    throw new SystemError('Failed to create user after multiple attempts', {
       errorCode: ERROR_CODE.USER_CONFLICT,
-      message: 'Failed to create user after multiple attempts',
     });
   }
 
@@ -99,10 +98,7 @@ export class AuthService {
     );
 
     if (!user) {
-      throw new UnauthorizedException({
-        errorCode: ERROR_CODE.USER_NOT_FOUND,
-        message: '사용자를 찾을 수 없습니다',
-      });
+      throw new UnauthorizedError('사용자를 찾을 수 없습니다', ERROR_CODE.USER_NOT_FOUND);
     }
 
     return {
@@ -112,17 +108,11 @@ export class AuthService {
     };
   }
 
-  /**
-   * OAuth ID로 사용자 조회
-   */
   async getUserByOAuthId(oauthId: string) {
     const user = await this.userRepository.findByOAuthId(oauthId);
 
     if (!user) {
-      throw new UnauthorizedException({
-        errorCode: ERROR_CODE.USER_NOT_FOUND,
-        message: '사용자를 찾을 수 없습니다',
-      });
+      throw new UnauthorizedError('사용자를 찾을 수 없습니다', ERROR_CODE.USER_NOT_FOUND);
     }
 
     return user;

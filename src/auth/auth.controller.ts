@@ -29,21 +29,11 @@ export class AuthController {
     private readonly mcpAuthService: McpAuthService,
   ) {}
 
-  /**
-   * Google OAuth 로그인 시작
-   * - 일반 웹 로그인: /auth/google
-   * - MCP 로그인: /auth/google?state=mcp
-   */
   @Get('google')
   @UseGuards(GoogleOAuthGuard)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async googleLogin(@Query('state') state?: string) {}
 
-  /**
-   * Google OAuth 콜백
-   * - state=mcp → 디바이스 코드 발급 후 프론트엔드로 리다이렉트
-   * - 그 외 → 쿠키에 토큰 저장 후 /templates로 리다이렉트
-   */
   @Get('google/callback')
   @UseGuards(GoogleOAuthGuard)
   async googleCallback(
@@ -52,10 +42,10 @@ export class AuthController {
     @Query('state') state?: string,
   ): Promise<void> {
     const oauthProfile = req.user as OAuthProfileDto;
-    const user = await this.authService.validateOAuthUser(oauthProfile);
+    const user = await this.authService.findOrCreateOAuthUser(oauthProfile);
 
     if (state === 'mcp') {
-      const code = await this.mcpAuthService.saveDeviceCode(user.id);
+      const code = await this.mcpAuthService.generateAndSaveDeviceCode(user.id);
       res.redirect(`${process.env.FRONTEND_URL}/mcp/code?code=${code}`);
 
       return;
@@ -117,15 +107,15 @@ export class AuthController {
       },
     },
   })
-  async guestLogin(
+  async loginAsGuest(
     @Body() body: { state?: string } = {},
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { user, tokens } = await this.authService.guestLogin();
+    const { user, tokens } = await this.authService.loginAsGuest();
 
     // state=mcp인 경우 디바이스 코드 발급
     if (body?.state === 'mcp') {
-      const code = await this.mcpAuthService.saveDeviceCode(user.id);
+      const code = await this.mcpAuthService.generateAndSaveDeviceCode(user.id);
 
       return {
         ok: true,

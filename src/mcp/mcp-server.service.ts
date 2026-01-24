@@ -35,7 +35,7 @@ export class McpServerService {
   ) {}
 
   /**
-   * Get authenticated user ID for session
+   * 세션에 대한 인증된 사용자 ID 조회
    * 1. 먼저 현재 세션에서 토큰 확인
    * 2. 없으면 전역 토큰 저장소에서 최근 로그인 확인
    */
@@ -105,7 +105,7 @@ export class McpServerService {
   }
 
   /**
-   * Create a new MCP server instance with registered tools
+   * 등록된 도구들로 새로운 MCP 서버 인스턴스 생성
    */
   private createMcpServer(sessionId: string): McpServer {
     const server = new McpServer({
@@ -119,7 +119,7 @@ export class McpServerService {
   }
 
   /**
-   * Register all MCP tools
+   * 모든 MCP 도구 등록
    */
   private registerTools(server: McpServer, sessionId: string): void {
     const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'https://www.propt.site';
@@ -163,7 +163,7 @@ export class McpServerService {
           }
 
           // Step 2: Exchange code for token
-          const tokens = await this.mcpAuthService.exchangeCode(input.code);
+          const tokens = await this.mcpAuthService.exchangeDeviceCodeForTokens(input.code);
 
           // Store auth in session
           this.sessions.set(sessionId, {
@@ -471,7 +471,7 @@ ${prompts.map((p) => `\n---\n**[${p.index}/${prompts.length}]**\n${p.prompt}`).j
   }
 
   /**
-   * Handle SSE connection
+   * SSE 연결 처리
    */
   async handleSseConnection(res: Response): Promise<void> {
     this.logger.log('New SSE connection request');
@@ -493,7 +493,7 @@ ${prompts.map((p) => `\n---\n**[${p.index}/${prompts.length}]**\n${p.prompt}`).j
   }
 
   /**
-   * Handle incoming messages
+   * 수신 메시지 처리
    */
   async handleMessage(sessionId: string, req: Request, res: Response): Promise<void> {
     if (!sessionId) {

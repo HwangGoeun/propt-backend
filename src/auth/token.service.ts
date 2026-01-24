@@ -1,6 +1,7 @@
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JsonWebTokenError, sign, SignOptions, TokenExpiredError, verify } from 'jsonwebtoken';
 import { ERROR_CODE } from 'src/common/constants/error-code';
+import { SystemError, UnauthorizedError } from 'src/common/errors/app.error';
 import { JwtConfigService } from 'src/config/jwt.config';
 import { TokenResponseDto } from './dto/token-response.dto';
 import { Payload } from './strategies/jwt.strategy';
@@ -11,9 +12,8 @@ export class TokenService {
 
   generateTokens(oauthId: string, oauthProvider: string): TokenResponseDto {
     if (!oauthId || !oauthProvider) {
-      throw new InternalServerErrorException({
+      throw new SystemError('Invalid token payload: oauthId and oauthProvider are required', {
         errorCode: ERROR_CODE.TOKEN_ISSUE_FAILED,
-        message: 'Invalid token payload: oauthId and oauthProvider are required',
       });
     }
 
@@ -35,21 +35,13 @@ export class TokenService {
         expiresIn: config.accessExpiresIn,
       };
     } catch (error) {
-      throw new InternalServerErrorException({
+      throw new SystemError('Failed to generate tokens', {
         errorCode: ERROR_CODE.TOKEN_ISSUE_FAILED,
-        message: 'Failed to generate tokens',
         details: error,
       });
     }
   }
 
-  /**
-   * TODO: Refresh Token 재발급 전략 개선 필요
-   *
-   * Sliding Window 방식
-   * - 기본적으로 Refresh Token 재사용
-   * - 남은 기간이 3일 미만일 때만 Refresh Token도 갱신
-   */
   refreshTokens(refreshToken: string): TokenResponseDto {
     const config = this.jwtConfigService.getJwtConfig();
 
@@ -59,24 +51,14 @@ export class TokenService {
       return this.generateTokens(payload.oauthId, payload.oauthProvider);
     } catch (error) {
       if (error instanceof TokenExpiredError) {
-        throw new UnauthorizedException({
-          errorCode: ERROR_CODE.TOKEN_EXPIRED,
-          message: 'Refresh token has expired',
-        });
+        throw new UnauthorizedError('Refresh token has expired', ERROR_CODE.TOKEN_EXPIRED);
       }
 
       if (error instanceof JsonWebTokenError) {
-        throw new UnauthorizedException({
-          errorCode: ERROR_CODE.TOKEN_INVALID,
-          message: 'Invalid refresh token',
-        });
+        throw new UnauthorizedError('Invalid refresh token', ERROR_CODE.TOKEN_INVALID);
       }
 
-      throw new UnauthorizedException({
-        errorCode: ERROR_CODE.TOKEN_INVALID,
-        message: 'Token verification failed',
-        details: error,
-      });
+      throw new UnauthorizedError('Token verification failed', ERROR_CODE.TOKEN_INVALID, error);
     }
   }
 
@@ -88,24 +70,14 @@ export class TokenService {
       return payload;
     } catch (error) {
       if (error instanceof TokenExpiredError) {
-        throw new UnauthorizedException({
-          errorCode: ERROR_CODE.TOKEN_EXPIRED,
-          message: 'Access token has expired',
-        });
+        throw new UnauthorizedError('Access token has expired', ERROR_CODE.TOKEN_EXPIRED);
       }
 
       if (error instanceof JsonWebTokenError) {
-        throw new UnauthorizedException({
-          errorCode: ERROR_CODE.TOKEN_INVALID,
-          message: 'Invalid access token',
-        });
+        throw new UnauthorizedError('Invalid access token', ERROR_CODE.TOKEN_INVALID);
       }
 
-      throw new UnauthorizedException({
-        errorCode: ERROR_CODE.TOKEN_INVALID,
-        message: 'Token verification failed',
-        details: error,
-      });
+      throw new UnauthorizedError('Token verification failed', ERROR_CODE.TOKEN_INVALID, error);
     }
   }
 }
