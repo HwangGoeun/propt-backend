@@ -4,6 +4,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { authLogin, authLogout } from './tools/auth.tool.js';
 import { getTemplateById } from './tools/get-template.tool.js';
+import { getOutputTypeInstruction } from './tools/messages/batch-messages.js';
 import { prepareBatch } from './tools/prepare-batch.tool.js';
 import { listTemplates } from './tools/templates.tool.js';
 
@@ -120,12 +121,18 @@ server.registerTool(
   async (input) => {
     try {
       const template = await getTemplateById(input.templateId);
+      const outputInstruction = getOutputTypeInstruction(template.outputType);
+
+      let responseText = JSON.stringify(template, null, 2);
+      if (outputInstruction) {
+        responseText += `\n\n<output_instruction>\n${outputInstruction}\n</output_instruction>`;
+      }
 
       return {
         content: [
           {
             type: 'text',
-            text: JSON.stringify(template, null, 2),
+            text: responseText,
           },
         ],
       };

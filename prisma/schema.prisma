@@ -28,6 +28,7 @@ model Template {
   title       String
   content     String      @db.Text
   variables   Json[]      @default([])
+  outputType  String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
