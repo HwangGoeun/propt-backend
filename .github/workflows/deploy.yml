@@ -3,6 +3,12 @@ name: Deploy to AWS
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: '배포를 실행하시겠습니까?'
+        required: true
+        default: 'yes'
 
 env:
   ECR_REPOSITORY: propt-backend
