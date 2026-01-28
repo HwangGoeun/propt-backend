@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsNotEmpty,
@@ -17,6 +17,7 @@ export class CreateTemplateDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }: { value: string }) => value?.trim())
   title!: string;
 
   @ApiProperty({
@@ -24,7 +25,8 @@ export class CreateTemplateDto {
     example: 'Please create a blog title for {keyword}',
   })
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: '템플릿 내용은 비어있을 수 없습니다.' })
+  @Transform(({ value }: { value: string }) => value?.trim())
   content!: string;
 
   @ApiProperty({

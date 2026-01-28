@@ -13,13 +13,15 @@ export class TemplateService {
   constructor(
     private readonly templateRepository: TemplateRepository,
     private readonly authService: AuthService,
-  ) { }
+  ) {}
 
   async create(userId: string, dto: CreateTemplateDto): Promise<TemplateResponseDto> {
     const user = await this.authService.getUserByOAuthId(userId);
 
     const template = await this.templateRepository.create({
-      creatorId: user.id,
+      creator: {
+        connect: { id: user.id },
+      },
       title: dto.title,
       content: dto.content,
       variables: (dto.variables as unknown as Prisma.InputJsonValue[]) ?? [],
