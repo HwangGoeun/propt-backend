@@ -93,7 +93,7 @@ describe('TemplateService', () => {
       expect(result.title).toBe('New Template');
       expect(result.outputType).toBeNull();
       expect(templateRepository.create).toHaveBeenCalledWith({
-        creatorId: 'user-db-id-123',
+        creator: { connect: { id: 'user-db-id-123' } },
         title: createDto.title,
         content: createDto.content,
         variables: createDto.variables,
@@ -123,7 +123,7 @@ describe('TemplateService', () => {
       expect(result.id).toBe('tpl_new');
       expect(result.outputType).toBe('markdown');
       expect(templateRepository.create).toHaveBeenCalledWith({
-        creatorId: 'user-db-id-123',
+        creator: { connect: { id: 'user-db-id-123' } },
         title: createDtoWithOutputType.title,
         content: createDtoWithOutputType.content,
         variables: createDtoWithOutputType.variables,
