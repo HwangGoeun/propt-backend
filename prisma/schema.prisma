@@ -17,6 +17,7 @@ model User {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
+  templates      Template[]
   mcpDeviceCodes McpDeviceCode[]
 
   @@unique([oauthProvider, oauthId])
@@ -28,8 +29,11 @@ model Template {
   title       String
   content     String      @db.Text
   variables   Json[]      @default([])
+  outputType  String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+
+  creator     User        @relation(fields: [creatorId], references: [id])
 
   @@unique([creatorId, title])
 }

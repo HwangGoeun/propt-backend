@@ -1,6 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
 import { TemplateVariableDto } from './template-variable.dto';
 
 export class CreateTemplateDto {
@@ -10,6 +17,7 @@ export class CreateTemplateDto {
   })
   @IsString()
   @IsNotEmpty()
+  @Transform(({ value }: { value: string }) => value?.trim())
   title!: string;
 
   @ApiProperty({
@@ -17,7 +25,8 @@ export class CreateTemplateDto {
     example: 'Please create a blog title for {keyword}',
   })
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: '템플릿 내용은 비어있을 수 없습니다.' })
+  @Transform(({ value }: { value: string }) => value?.trim())
   content!: string;
 
   @ApiProperty({
@@ -31,4 +40,15 @@ export class CreateTemplateDto {
   @ValidateNested({ each: true })
   @Type(() => TemplateVariableDto)
   variables?: TemplateVariableDto[];
+
+  @ApiProperty({
+    description: 'Output type for the template',
+    example: 'markdown',
+    required: false,
+    nullable: true,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  outputType?: string | null;
 }

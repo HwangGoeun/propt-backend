@@ -63,7 +63,14 @@ describe('TemplateService', () => {
       variables: [{ name: 'variable', type: 'text' as const }],
     };
 
-    it('should create template successfully', async () => {
+    const createDtoWithOutputType = {
+      title: 'New Template with Output Type',
+      content: 'Content with {variable}',
+      variables: [{ name: 'variable', type: 'text' as const }],
+      outputType: 'markdown',
+    };
+
+    it('outputType 없이 템플릿을 성공적으로 생성해야 한다', async () => {
       const date = new Date();
 
       const mockTemplate = {
@@ -72,6 +79,7 @@ describe('TemplateService', () => {
         title: createDto.title,
         content: createDto.content,
         variables: createDto.variables,
+        outputType: null,
         createdAt: date,
         updatedAt: date,
       };
@@ -83,11 +91,43 @@ describe('TemplateService', () => {
 
       expect(result.id).toBe('tpl_new');
       expect(result.title).toBe('New Template');
+      expect(result.outputType).toBeNull();
       expect(templateRepository.create).toHaveBeenCalledWith({
-        creatorId: 'user-db-id-123',
+        creator: { connect: { id: 'user-db-id-123' } },
         title: createDto.title,
         content: createDto.content,
         variables: createDto.variables,
+        outputType: null,
+      });
+    });
+
+    it('outputType과 함께 템플릿을 성공적으로 생성해야 한다', async () => {
+      const date = new Date();
+
+      const mockTemplate = {
+        id: 'tpl_new',
+        creatorId: 'user-db-id-123',
+        title: createDtoWithOutputType.title,
+        content: createDtoWithOutputType.content,
+        variables: createDtoWithOutputType.variables,
+        outputType: 'markdown',
+        createdAt: date,
+        updatedAt: date,
+      };
+
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
+      jest.spyOn(templateRepository, 'create').mockResolvedValue(mockTemplate);
+
+      const result = await service.create('google-user-1', createDtoWithOutputType);
+
+      expect(result.id).toBe('tpl_new');
+      expect(result.outputType).toBe('markdown');
+      expect(templateRepository.create).toHaveBeenCalledWith({
+        creator: { connect: { id: 'user-db-id-123' } },
+        title: createDtoWithOutputType.title,
+        content: createDtoWithOutputType.content,
+        variables: createDtoWithOutputType.variables,
+        outputType: 'markdown',
       });
     });
 
@@ -134,6 +174,7 @@ describe('TemplateService', () => {
               type: 'test',
             },
           ] as Prisma.JsonValue[],
+          outputType: null,
           createdAt: date,
           updatedAt: date,
         },
@@ -143,6 +184,7 @@ describe('TemplateService', () => {
           creatorId: 'user-db-id-123',
           content: 'Content 2',
           variables: [],
+          outputType: 'json',
           createdAt: date,
           updatedAt: date,
         },
@@ -155,6 +197,11 @@ describe('TemplateService', () => {
 
       expect(result).toHaveLength(2);
       expect(result[0].id).toBe('template_1');
+      expect(result[0]).toHaveProperty('variables');
+      expect(Array.isArray(result[0].variables)).toBe(true);
+      expect(result[0].outputType).toBeNull();
+      expect(result[1].id).toBe('template_2');
+      expect(result[1].outputType).toBe('json');
       expect(templateRepository.findAllByUserId).toHaveBeenCalledWith('user-db-id-123');
     });
 
@@ -202,6 +249,7 @@ describe('TemplateService', () => {
         title: 'Test Template',
         content: 'Content',
         variables: [],
+        outputType: null,
         createdAt: date,
         updatedAt: date,
       };
@@ -252,6 +300,7 @@ describe('TemplateService', () => {
         title: 'Test Template',
         content: 'Content',
         variables: [],
+        outputType: null,
         createdAt: date,
         updatedAt: date,
       };
@@ -283,6 +332,7 @@ describe('TemplateService', () => {
       title: 'Original Title',
       content: 'Original Content',
       variables: [{ name: 'var1', type: 'text' }],
+      outputType: null,
       createdAt: date,
       updatedAt: date,
     };
@@ -310,10 +360,119 @@ describe('TemplateService', () => {
 
       expect(result.id).toBe('tpl_1');
       expect(result.title).toBe('Updated Title');
+      expect(result.content).toBe('Updated Content');
       expect(templateRepository.update).toHaveBeenCalledWith('tpl_1', {
         title: 'Updated Title',
         content: 'Updated Content',
         variables: updateDto.variables,
+      });
+    });
+
+    it('outputType을 정상적으로 업데이트해야 한다', async () => {
+      // 1. 문자열 값으로 업데이트
+      const updateDtoWithValue = { outputType: 'table' };
+      const updatedTemplateWithValue = {
+        ...mockTemplate,
+        outputType: 'table',
+        updatedAt: new Date(),
+      };
+
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
+      jest.spyOn(templateRepository, 'findOneById').mockResolvedValue(mockTemplate);
+      jest.spyOn(templateRepository, 'update').mockResolvedValue(updatedTemplateWithValue);
+
+      const result1 = await service.update('tpl_1', 'google-user-1', updateDtoWithValue);
+
+      expect(result1.outputType).toBe('table');
+      expect(templateRepository.update).toHaveBeenCalledWith('tpl_1', {
+        outputType: 'table',
+      });
+
+      // 2. null로 업데이트
+      const mockTemplateWithOutputType = { ...mockTemplate, outputType: 'markdown' };
+      const updatedTemplateWithNull = {
+        ...mockTemplateWithOutputType,
+        outputType: null,
+        updatedAt: new Date(),
+      };
+
+      jest.spyOn(templateRepository, 'findOneById').mockResolvedValue(mockTemplateWithOutputType);
+      jest.spyOn(templateRepository, 'update').mockResolvedValue(updatedTemplateWithNull);
+
+      const result2 = await service.update('tpl_1', 'google-user-1', { outputType: null });
+
+      expect(result2.outputType).toBeNull();
+      expect(templateRepository.update).toHaveBeenCalledWith('tpl_1', {
+        outputType: null,
+      });
+    });
+
+    it('should throw UnauthorizedError if user not found', async () => {
+      jest.spyOn(authService, 'getUserByOAuthId').mockRejectedValue(new UnauthorizedError(''));
+
+      await expect(service.update('tpl_1', 'non-existent', { title: 'New Title' })).rejects.toThrow(
+        UnauthorizedError,
+      );
+
+      expect(templateRepository.findOneById).not.toHaveBeenCalled();
+      expect(templateRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundError if template not found', async () => {
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
+      jest.spyOn(templateRepository, 'findOneById').mockResolvedValue(null);
+
+      await expect(
+        service.update('tpl_999', 'google-user-1', { title: 'New Title' }),
+      ).rejects.toThrow(NotFoundError);
+
+      expect(templateRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenError if user is not owner', async () => {
+      const otherUserTemplate = {
+        ...mockTemplate,
+        creatorId: 'other-user-id',
+      };
+
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
+      jest.spyOn(templateRepository, 'findOneById').mockResolvedValue(otherUserTemplate);
+
+      await expect(
+        service.update('tpl_1', 'google-user-1', { title: 'New Title' }),
+      ).rejects.toThrow(ForbiddenError);
+
+      expect(templateRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ConflictError on duplicate title (P2002)', async () => {
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
+      jest.spyOn(templateRepository, 'findOneById').mockResolvedValue(mockTemplate);
+      jest.spyOn(templateRepository, 'update').mockRejectedValue(new ConflictError(''));
+
+      await expect(
+        service.update('tpl_1', 'google-user-1', { title: 'Duplicate Title' }),
+      ).rejects.toThrow(ConflictError);
+    });
+
+    it('should update only title when partial update', async () => {
+      const partialUpdateDto = { title: 'Only Title Updated' };
+
+      const partiallyUpdatedTemplate = {
+        ...mockTemplate,
+        title: partialUpdateDto.title,
+        updatedAt: new Date(),
+      };
+
+      jest.spyOn(authService, 'getUserByOAuthId').mockResolvedValue(mockUser);
+      jest.spyOn(templateRepository, 'findOneById').mockResolvedValue(mockTemplate);
+      jest.spyOn(templateRepository, 'update').mockResolvedValue(partiallyUpdatedTemplate);
+
+      const result = await service.update('tpl_1', 'google-user-1', partialUpdateDto);
+
+      expect(result.title).toBe('Only Title Updated');
+      expect(templateRepository.update).toHaveBeenCalledWith('tpl_1', {
+        title: 'Only Title Updated',
       });
     });
   });
@@ -328,6 +487,7 @@ describe('TemplateService', () => {
         title: 'Test Template',
         content: 'Content',
         variables: [],
+        outputType: null,
         createdAt: date,
         updatedAt: date,
       };

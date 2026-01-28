@@ -64,6 +64,8 @@ ${item.filledPrompt}`,
     )
     .join('\n\n');
 
+  const outputInstruction = getOutputTypeInstruction(template.outputType);
+
   return `# 배치 처리 요청 (${items.length}건)
 
 ## 처리 방식
@@ -88,6 +90,7 @@ ${promptList}
 ---
 
 ## 응답 형식
+${outputInstruction ? `\n> **출력 형식 지시사항**\n> ${outputInstruction}\n` : ''}
 각 항목별로 구분하여 응답해주세요:
 
 ## [A]
@@ -99,4 +102,19 @@ ${promptList}
 ---
 
 처리를 시작해주세요.`;
+}
+
+export function getOutputTypeInstruction(outputType: string | null): string {
+  if (!outputType) return '';
+
+  const presetInstructions: Record<string, string> = {
+    markdown: '응답 전체를 마크다운 코드 블록(```markdown)으로 감싸서 작성해주세요.',
+    json: '응답 전체를 JSON 코드 블록(```json)으로 감싸서 작성해주세요.',
+    table: '응답을 마크다운 표 형식으로 작성해주세요.',
+    bullet_list: '응답을 불릿 리스트 형식으로 작성해주세요.',
+    csv: '응답 전체를 CSV 코드 블록(```csv)으로 감싸서 작성해주세요.',
+    html: '응답 전체를 HTML 코드 블록(```html)으로 감싸서 작성해주세요.',
+  };
+
+  return presetInstructions[outputType] ?? '';
 }

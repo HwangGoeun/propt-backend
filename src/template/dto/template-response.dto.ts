@@ -14,6 +14,9 @@ export class TemplateResponseDto {
   @ApiProperty({ type: [TemplateVariableDto], example: [] })
   variables?: TemplateVariableDto[];
 
+  @ApiProperty({ example: 'markdown', required: false, nullable: true })
+  outputType?: string | null;
+
   @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
   createdAt!: Date;
 

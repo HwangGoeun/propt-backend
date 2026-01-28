@@ -19,10 +19,13 @@ export class TemplateService {
     const user = await this.authService.getUserByOAuthId(userId);
 
     const template = await this.templateRepository.create({
-      creatorId: user.id,
+      creator: {
+        connect: { id: user.id },
+      },
       title: dto.title,
       content: dto.content,
       variables: (dto.variables as unknown as Prisma.InputJsonValue[]) ?? [],
+      outputType: dto.outputType ?? null,
     });
 
     return this.toResponseDto(template);
@@ -49,6 +52,7 @@ export class TemplateService {
       ...(dto.variables !== undefined && {
         variables: dto.variables as unknown as Prisma.InputJsonValue[],
       }),
+      ...(dto.outputType !== undefined && { outputType: dto.outputType }),
     });
 
     return this.toResponseDto(updatedTemplate);
@@ -80,6 +84,7 @@ export class TemplateService {
       title: template.title,
       content: template.content,
       variables: template.variables as unknown as TemplateVariableDto[],
+      outputType: template.outputType,
       createdAt: template.createdAt,
       updatedAt: template.updatedAt,
     };
