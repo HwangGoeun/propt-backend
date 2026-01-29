@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Patch,
   Post,
   Query,
   Req,
@@ -14,11 +15,13 @@ import type { Request, Response } from 'express';
 import ms from 'ms';
 import { JwtConfigService } from 'src/config/jwt.config';
 import { McpAuthService } from 'src/mcp/mcp-auth.service';
+import { UserRepository } from 'src/user/user.repository';
 import { AuthService } from './auth.service';
 import { OAuthProfileDto } from './dto/oauth-profile.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { TokenResponseDto } from './dto/token-response.dto';
 import { GoogleOAuthGuard } from './guards/google-oauth.guard';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -27,6 +30,7 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly jwtConfigService: JwtConfigService,
     private readonly mcpAuthService: McpAuthService,
+    private readonly userRepository: UserRepository,
   ) {}
 
   @Get('google')
@@ -44,16 +48,10 @@ export class AuthController {
     const oauthProfile = req.user as OAuthProfileDto;
     const user = await this.authService.findOrCreateOAuthUser(oauthProfile);
 
-    if (state === 'mcp') {
-      const code = await this.mcpAuthService.generateAndSaveDeviceCode(user.id);
-      res.redirect(`${process.env.FRONTEND_URL}/mcp/code?code=${code}`);
-
-      return;
-    }
-
     const tokens = this.authService.generateTokens(user.oauthId, user.oauthProvider);
     const jwtConfig = this.jwtConfigService.getJwtConfig();
 
+    // 쿠키 설정 (MCP 포함 모든 경우)
     res.cookie('accessToken', tokens.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -67,6 +65,13 @@ export class AuthController {
       sameSite: 'lax',
       maxAge: ms(jwtConfig.refreshExpiresIn as ms.StringValue),
     });
+
+    if (state === 'mcp') {
+      const code = await this.mcpAuthService.generateAndSaveDeviceCode(user.id);
+      res.redirect(`${process.env.FRONTEND_URL}/mcp/code?code=${code}`);
+
+      return;
+    }
 
     res.redirect(`${process.env.FRONTEND_URL}/templates`);
   }
@@ -90,8 +95,31 @@ export class AuthController {
           id: user.id,
           email: user.email,
           name: user.name,
+          hasCompletedOnboarding: user.hasCompletedOnboarding,
         },
       },
+    };
+  }
+
+  @Patch('onboarding')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '온보딩 완료 상태 업데이트' })
+  async updateOnboarding(@Req() req: Request, @Body() body: { completed: boolean }) {
+    const jwtUser = req.user as { userId: string; provider: string };
+    const dbUser = await this.userRepository.findByOAuthCredentials(
+      jwtUser.provider,
+      jwtUser.userId,
+    );
+
+    if (!dbUser) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+    }
+
+    await this.userRepository.updateOnboardingStatus(dbUser.id, body.completed);
+
+    return {
+      ok: true,
+      data: null,
     };
   }
 
@@ -113,18 +141,7 @@ export class AuthController {
   ) {
     const { user, tokens } = await this.authService.loginAsGuest();
 
-    // state=mcp인 경우 디바이스 코드 발급
-    if (body?.state === 'mcp') {
-      const code = await this.mcpAuthService.generateAndSaveDeviceCode(user.id);
-
-      return {
-        ok: true,
-        data: {
-          code,
-        },
-      };
-    }
-
+    // 쿠키 설정 (MCP 포함 모든 경우)
     res.cookie('accessToken', tokens.accessToken, {
       httpOnly: true,
       secure: true,
@@ -137,6 +154,18 @@ export class AuthController {
       sameSite: 'none',
       path: '/',
     });
+
+    // state=mcp인 경우 디바이스 코드 발급
+    if (body?.state === 'mcp') {
+      const code = await this.mcpAuthService.generateAndSaveDeviceCode(user.id);
+
+      return {
+        ok: true,
+        data: {
+          code,
+        },
+      };
+    }
 
     return {
       ok: true,
@@ -166,6 +195,32 @@ export class AuthController {
     return {
       ok: true,
       data: null,
+    };
+  }
+
+  @Post('code/generate')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'MCP 디바이스 코드 발급' })
+  @ApiResponse({
+    status: 201,
+    description: 'MCP 연결을 위한 디바이스 코드 발급',
+  })
+  async generateCode(@Req() req: Request) {
+    const jwtUser = req.user as { userId: string; provider: string };
+    const dbUser = await this.userRepository.findByOAuthCredentials(
+      jwtUser.provider,
+      jwtUser.userId,
+    );
+
+    if (!dbUser) {
+      throw new UnauthorizedException('사용자를 찾을 수 없습니다.');
+    }
+
+    const code = await this.mcpAuthService.generateAndSaveDeviceCode(dbUser.id);
+
+    return {
+      ok: true,
+      data: { code },
     };
   }
 }

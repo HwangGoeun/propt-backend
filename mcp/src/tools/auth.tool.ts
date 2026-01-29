@@ -31,7 +31,7 @@ export async function authLogin(code?: string) {
 1. 아래 URL을 브라우저에서 여세요:
    ${url}
 
-2. Google 로그인 완료 후 표시되는 6자리 코드를 복사하세요.
+2. 로그인 완료 후 표시되는 6자리 코드를 복사하세요.
 
 3. 이 툴을 다시 실행하고 code 파라미터에 코드를 입력하세요.
    예: propt_auth_login(code: "ABC123")`,

@@ -40,4 +40,11 @@ export class UserRepository {
       data: { refreshToken: token },
     });
   }
+
+  async updateOnboardingStatus(id: string, completed: boolean) {
+    await this.prisma.user.update({
+      where: { id },
+      data: { hasCompletedOnboarding: completed },
+    });
+  }
 }
