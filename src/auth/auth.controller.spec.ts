@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Request, Response } from 'express';
 import { JwtConfigService } from '../config/jwt.config';
 import { McpAuthService } from '../mcp/mcp-auth.service';
+import { UserRepository } from '../user/user.repository';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
@@ -32,6 +33,10 @@ const mockJwtConfigService = {
 
 const mockMcpAuthService = {
   generateAndSaveDeviceCode: jest.fn(),
+};
+
+const mockUserRepository = {
+  findByOAuthCredentials: jest.fn(),
 };
 
 describe('AuthController', () => {
@@ -70,6 +75,10 @@ describe('AuthController', () => {
         {
           provide: McpAuthService,
           useValue: mockMcpAuthService,
+        },
+        {
+          provide: UserRepository,
+          useValue: mockUserRepository,
         },
       ],
     }).compile();
@@ -120,7 +129,7 @@ describe('AuthController', () => {
       process.env.FRONTEND_URL = originalEnv;
     });
 
-    it('state=mcp인 경우 디바이스 코드를 발급하고 /mcp/code로 리다이렉트해야 한다', async () => {
+    it('state=mcp인 경우 쿠키를 설정하고 디바이스 코드를 발급 후 /mcp/code로 리다이렉트해야 한다', async () => {
       const mockResponse = createMockResponse();
       const mockUser = {
         id: 'user-123',
@@ -134,6 +143,10 @@ describe('AuthController', () => {
       const mockRequest = createMockRequest({}, oauthProfile);
 
       mockAuthService.findOrCreateOAuthUser.mockResolvedValue(mockUser);
+      mockAuthService.generateTokens.mockReturnValue({
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      });
       mockMcpAuthService.generateAndSaveDeviceCode.mockResolvedValue('ABC123');
 
       const originalEnv = process.env.FRONTEND_URL;
@@ -141,11 +154,24 @@ describe('AuthController', () => {
 
       await controller.googleCallback(mockRequest, mockResponse, 'mcp');
 
+      // 쿠키 설정 확인
+      expect(mockAuthService.generateTokens).toHaveBeenCalledWith('google-user-123', 'google');
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        'accessToken',
+        'access-token',
+        expect.objectContaining({ httpOnly: true }),
+      );
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        'refreshToken',
+        'refresh-token',
+        expect.objectContaining({ httpOnly: true }),
+      );
+
+      // 디바이스 코드 발급 및 리다이렉트 확인
       expect(mockMcpAuthService.generateAndSaveDeviceCode).toHaveBeenCalledWith('user-123');
       expect(mockResponse.redirect).toHaveBeenCalledWith(
         'http://localhost:3000/mcp/code?code=ABC123',
       );
-      expect(mockAuthService.generateTokens).not.toHaveBeenCalled();
 
       process.env.FRONTEND_URL = originalEnv;
     });
@@ -211,7 +237,7 @@ describe('AuthController', () => {
       expect(result).toEqual({ ok: true, data: null });
     });
 
-    it('state=mcp인 경우 디바이스 코드를 반환해야 한다', async () => {
+    it('state=mcp인 경우 쿠키를 설정하고 디바이스 코드를 반환해야 한다', async () => {
       const mockResponse = createMockResponse();
 
       mockMcpAuthService.generateAndSaveDeviceCode.mockResolvedValue('DEF456');
@@ -225,7 +251,22 @@ describe('AuthController', () => {
           code: 'DEF456',
         },
       });
-      expect(mockResponse.cookie).not.toHaveBeenCalled();
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        'accessToken',
+        'accessToken_123',
+        expect.objectContaining({
+          httpOnly: true,
+          path: '/',
+        }),
+      );
+      expect(mockResponse.cookie).toHaveBeenCalledWith(
+        'refreshToken',
+        'refreshToken_123',
+        expect.objectContaining({
+          httpOnly: true,
+          path: '/',
+        }),
+      );
     });
   });
 

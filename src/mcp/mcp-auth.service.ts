@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { UserType } from 'src/auth/dto/token-response.dto';
 import { TokenService } from 'src/auth/token.service';
 import { UnauthorizedError } from 'src/common/errors/app.error';
 import { UserRepository } from 'src/user/user.repository';
@@ -50,6 +51,8 @@ export class McpAuthService {
     await this.userRepository.updateRefreshToken(deviceCode.userId, tokens.refreshToken);
     await this.mcpDeviceCodeRepository.delete(deviceCode.id);
 
-    return tokens;
+    const userType: UserType = deviceCode.user.oauthProvider === 'guest' ? 'guest' : 'social';
+
+    return { ...tokens, userType };
   }
 }

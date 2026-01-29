@@ -75,6 +75,7 @@ describe('McpAuthService', () => {
       expect(result).toEqual({
         accessToken: 'mock_access_token',
         refreshToken: 'mock_refresh_token',
+        userType: 'social',
       });
     });
 
@@ -97,6 +98,23 @@ describe('McpAuthService', () => {
       await service.exchangeDeviceCodeForTokens('abc123');
 
       expect(deviceCodeRepository.findValidCode).toHaveBeenCalledWith('ABC123');
+    });
+
+    it('게스트 사용자인 경우 userType이 guest여야 한다', async () => {
+      const mockDeviceCode = {
+        id: 'code-123',
+        code: 'ABC123',
+        user: { oauthId: 'guest-123', oauthProvider: 'guest' },
+      };
+      deviceCodeRepository.findValidCode.mockResolvedValue(mockDeviceCode);
+
+      const result = await service.exchangeDeviceCodeForTokens('ABC123');
+
+      expect(result).toEqual({
+        accessToken: 'mock_access_token',
+        refreshToken: 'mock_refresh_token',
+        userType: 'guest',
+      });
     });
   });
 });

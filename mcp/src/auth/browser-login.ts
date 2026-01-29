@@ -32,10 +32,17 @@ export async function exchangeDeviceCode(code: string): Promise<Tokens> {
 
   const tokens = responseBody.data;
 
-  await TokenStore.save({
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-  });
+  if (tokens.userType === 'guest') {
+    TokenStore.saveToMemory({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    });
+  } else {
+    await TokenStore.save({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    });
+  }
 
   return tokens;
 }
