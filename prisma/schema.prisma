@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id            String      @id @default(cuid())
-  oauthProvider String
-  oauthId       String
-  name          String
-  email         String?
-  refreshToken  String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id                    String      @id @default(cuid())
+  oauthProvider         String
+  oauthId               String
+  name                  String
+  email                 String?
+  refreshToken          String?
+  hasCompletedOnboarding Boolean    @default(false)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
 
   templates      Template[]
   mcpDeviceCodes McpDeviceCode[]
