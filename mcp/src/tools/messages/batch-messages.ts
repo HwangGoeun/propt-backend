@@ -116,5 +116,18 @@ export function getOutputTypeInstruction(outputType: string | null): string {
     html: '응답 전체를 HTML 코드 블록(```html)으로 감싸서 작성해주세요.',
   };
 
-  return presetInstructions[outputType] ?? '';
+  if (outputType in presetInstructions) {
+    return presetInstructions[outputType];
+  }
+
+  // 프리셋에 없는 경우 Claude가 스스로 판단하도록 지시
+  return `**[필수] 출력 형식: ${outputType}**
+
+이 출력 형식이 파일 확장자(pdf, docx, pptx, xlsx 등)인 경우:
+- 반드시 도구를 사용하여 실제 파일을 생성해야 합니다
+- 텍스트로만 응답하지 마세요
+- 파일 생성이 불가능한 경우에만 이유를 설명해주세요
+
+텍스트 형식인 경우:
+- 해당 형식으로 응답을 작성해주세요`;
 }
