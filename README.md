@@ -8,7 +8,9 @@
 
 [![프로프트 시연 영상](https://img.youtube.com/vi/Ip2T3xFEeJY/0.jpg)](https://www.youtube.com/watch?v=Ip2T3xFEeJY)
 
-[프로프트 사용해보기](https://www.propt.site/) | [프론트엔드 레포지토리](https://github.com/HwangGoeun/propt-frontend) | [백엔드 레포지토리](https://github.com/HwangGoeun/propt-backend)
+👆 위 영상을 통해 프로프트에 대해 알아보세요!
+
+[프로프트 사용해보기](https://www.propt.site/) | [프론트엔드 레포지토리](https://github.com/HwangGoeun/propt-frontend) | [백엔드 레포지토리](https://github.com/HwangGoeun/propt-backend) | [업데이트 내역](https://github.com/HwangGoeun/propt-backend/pulls?q=is%3Apr+is%3Aclosed)
 </div>
 
 <br>
@@ -18,7 +20,7 @@
 - [기술 스택](#기술-스택)
   - [Frontend](#frontend)
   - [Backend](#backend)
-- [Challenges](#challenges)
+- [구현하면서 어려웠던 것들](#구현하면서-어려웠던-것들)
   - [AI Agent ↔ MCP ↔ Web 간 사용자 인증 절차](#ai-agent--mcp--web-간-사용자-인증-절차)
     - [표준 OAuth 방식 사용 불가능 문제](#표준-oauth-방식-사용-불가능-문제)
     - [OTP로부터 힌트를 얻다](#otp로부터-힌트를-얻다)
@@ -71,7 +73,7 @@
 ---
 <br>
 
-# Challenges
+# 구현하면서 어려웠던 것들
 ## AI Agent ↔ MCP ↔ Web 간 사용자 인증 절차
 프로프트는 웹에서 작성해놓은 프롬프트를 AI 에이전트에서 사용할 수 있도록 해주는 MCP입니다.
 따라서, 사용자가 작성한 프롬프트만 사용할 수 있도록 하기 위해 MCP에서도 로그인과 같은 인증 과정을 거쳐야 합니다.
