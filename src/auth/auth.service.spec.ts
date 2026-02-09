@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ERROR_CODE } from 'src/common/constants/error-code';
-import { SystemError, UnauthorizedError } from 'src/common/errors/app.error';
+import { NotFoundError, SystemError, UnauthorizedError } from 'src/common/errors/app.error';
 import { UserRepository } from '../user/user.repository';
 import { AuthService } from './auth.service';
 import { OAuthProfileDto } from './dto/oauth-profile.dto';
@@ -11,6 +11,7 @@ const mockUserRepository = {
   updateRefreshToken: jest.fn(),
   findByOAuthCredentials: jest.fn(),
   findByOAuthId: jest.fn(),
+  deleteUser: jest.fn(),
 };
 
 const mockTokenService = {
@@ -301,6 +302,35 @@ describe('AuthService', () => {
         expect(error).toBeInstanceOf(UnauthorizedError);
         expect((error as UnauthorizedError).errorCode).toBe(ERROR_CODE.USER_NOT_FOUND);
       }
+    });
+  });
+
+  describe('withdraw', () => {
+    it('사용자를 찾아서 삭제해야 한다', async () => {
+      const mockUser = {
+        id: 'user-db-id',
+        oauthProvider: 'google',
+        oauthId: 'google-user-123',
+        email: 'test@example.com',
+        name: 'Test User',
+      };
+
+      userRepository.findByOAuthCredentials.mockResolvedValue(mockUser);
+      userRepository.deleteUser.mockResolvedValue(undefined);
+
+      await service.withdraw('google', 'google-user-123');
+
+      expect(userRepository.findByOAuthCredentials).toHaveBeenCalledWith(
+        'google',
+        'google-user-123',
+      );
+      expect(userRepository.deleteUser).toHaveBeenCalledWith('user-db-id');
+    });
+
+    it('사용자가 없으면 NotFoundError를 던져야 한다', async () => {
+      userRepository.findByOAuthCredentials.mockResolvedValue(null);
+
+      await expect(service.withdraw('google', 'non-existent')).rejects.toThrow(NotFoundError);
     });
   });
 });
