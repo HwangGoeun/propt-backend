@@ -20,6 +20,7 @@
 - [기술 스택](#기술-스택)
   - [Frontend](#frontend)
   - [Backend](#backend)
+  - [기술 스택 선정 이유](#기술-스택-선정-이유)
 - [구현하면서 어려웠던 것들](#구현하면서-어려웠던-것들)
   - [AI Agent ↔ MCP ↔ Web 간 사용자 인증 절차](#ai-agent--mcp--web-간-사용자-인증-절차)
     - [표준 OAuth 방식 사용 불가능 문제](#표준-oauth-방식-사용-불가능-문제)
@@ -67,6 +68,55 @@
 | **MCP** | Model Context Protocol SDK |
 | **Testing** | Jest, Supertest |
 | **Code Quality** | ESLint, Prettier, Husky |
+
+<br>
+
+## 기술 스택 선정 이유
+
+<details>
+<summary><b>Zustand — 클라이언트 상태 관리</b></summary>
+
+<br>
+
+프로프트의 프론트엔드는 **템플릿 편집 상태**(현재 선택된 템플릿, 편집 중 데이터, 저장 상태)를 여러 컴포넌트에서 공유합니다. 사이드바에서 템플릿을 선택하면 편집기와 미리보기 패널이 동시에 반응해야 합니다.
+
+**왜 Zustand인가**
+
+- **store 외부 접근**: 디바운스 기반 자동 저장 로직에서 React 컴포넌트 바깥(setTimeout 콜백)에서 최신 상태를 읽어야 합니다. Zustand의 `getState()`로 구독 없이 직접 접근이 가능합니다.
+- **최소한의 보일러플레이트**: Redux는 action, reducer, selector를 분리해야 하지만, Zustand는 하나의 store 파일에서 상태와 액션을 함께 정의합니다. 4주 개발 기간에서 설정 비용을 줄였습니다.
+- **선택적 리렌더링**: `useTemplateStore(state => state.saveStatus)`처럼 selector로 필요한 상태만 구독하여, 편집 중 불필요한 사이드바 리렌더링을 방지합니다.
+
+</details>
+
+<details>
+<summary><b>TanStack Query — 서버 상태 관리</b></summary>
+
+<br>
+
+템플릿 목록 조회, 생성, 수정, 삭제 등 **서버 데이터의 동기화**가 핵심입니다. 클라이언트 상태(Zustand)와 서버 상태의 관심사를 분리해야 했습니다.
+
+**왜 TanStack Query인가**
+
+- **캐싱과 자동 재검증**: 템플릿 목록을 한 번 조회하면 캐싱되고, 수정(mutation) 후 `invalidateQueries`로 자동 갱신됩니다. 직접 캐시 로직을 구현할 필요가 없습니다.
+- **낙관적 업데이트**: 템플릿 저장 시 서버 응답을 기다리지 않고 UI를 먼저 업데이트하여, "저장 중 → 저장 완료" 같은 즉각적인 피드백을 선언적으로 구현합니다.
+- **로딩/에러 상태 자동 관리**: `isLoading`, `isError` 플래그를 직접 관리하는 대신, 훅 하나로 비동기 상태를 처리합니다.
+
+</details>
+
+<details>
+<summary><b>MCP SDK — Claude Desktop 연동</b></summary>
+
+<br>
+
+프로프트의 핵심 기능은 Claude Desktop에서 템플릿을 직접 호출하는 것입니다. 이를 위해 **Model Context Protocol(MCP)**로 Claude와 통신해야 합니다.
+
+**왜 MCP SDK인가**
+
+- **공식 프로토콜 구현체**: Anthropic이 제공하는 공식 TypeScript SDK로, 프로토콜 스펙 변경에 즉시 대응됩니다. 직접 구현 대비 유지보수 비용이 낮습니다.
+- **이중 전송 지원**: Stdio(Claude Desktop 로컬 실행)와 SSE(Claude Web 원격 실행) 두 방식을 모두 지원합니다. 동일한 도구 로직으로 두 환경을 커버하여, 도구 코드를 중복 작성하지 않습니다.
+- **도구 등록 API**: `server.tool(name, schema, handler)` 형태로 MCP 도구를 선언적으로 등록합니다. Zod 스키마로 입력 검증까지 통합되어, 도구 추가 시 핸들러 함수만 작성하면 됩니다.
+
+</details>
 
 <br>
 
