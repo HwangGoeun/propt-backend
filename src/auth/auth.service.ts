@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { ERROR_CODE } from 'src/common/constants/error-code';
-import { SystemError, UnauthorizedError } from 'src/common/errors/app.error';
+import { NotFoundError, SystemError, UnauthorizedError } from 'src/common/errors/app.error';
 import { generateRandomUsername } from 'src/common/utils/user-name.util';
 import { UserRepository } from 'src/user/user.repository';
 import { OAuthProfileDto } from './dto/oauth-profile.dto';
@@ -117,5 +117,15 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  async withdraw(oauthProvider: string, oauthId: string) {
+    const user = await this.userRepository.findByOAuthCredentials(oauthProvider, oauthId);
+
+    if (!user) {
+      throw new NotFoundError('사용자를 찾을 수 없습니다');
+    }
+
+    await this.userRepository.deleteUser(user.id);
   }
 }

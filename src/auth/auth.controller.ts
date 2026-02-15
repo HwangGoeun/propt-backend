@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Patch,
   Post,
@@ -180,6 +181,33 @@ export class AuthController {
 
   @Post('logout')
   logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('accessToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+    });
+
+    return {
+      ok: true,
+      data: null,
+    };
+  }
+
+  @Delete('withdraw')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '회원 탈퇴' })
+  @ApiResponse({ status: 200, description: '회원 탈퇴 성공' })
+  async withdraw(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const jwtUser = req.user as { userId: string; provider: string };
+
+    await this.authService.withdraw(jwtUser.provider, jwtUser.userId);
+
     res.clearCookie('accessToken', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

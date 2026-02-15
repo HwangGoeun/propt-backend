@@ -22,6 +22,7 @@ const mockAuthService = {
   generateTokens: jest.fn(),
   refreshTokens: jest.fn(),
   validateToken: jest.fn(),
+  withdraw: jest.fn(),
 };
 
 const mockJwtConfigService = {
@@ -293,6 +294,28 @@ describe('AuthController', () => {
 
       const result = controller.logout(mockResponse);
 
+      expect(mockResponse.clearCookie).toHaveBeenCalledWith(
+        'accessToken',
+        expect.objectContaining({ httpOnly: true }),
+      );
+      expect(mockResponse.clearCookie).toHaveBeenCalledWith(
+        'refreshToken',
+        expect.objectContaining({ httpOnly: true }),
+      );
+      expect(result).toEqual({ ok: true, data: null });
+    });
+  });
+
+  describe('withdraw', () => {
+    it('사용자를 삭제하고 쿠키를 제거한 후 ok:true를 반환해야 한다', async () => {
+      const mockResponse = createMockResponse();
+      const mockRequest = createMockRequest({}, { userId: 'google-user-123', provider: 'google' });
+
+      mockAuthService.withdraw.mockResolvedValue(undefined);
+
+      const result = await controller.withdraw(mockRequest, mockResponse);
+
+      expect(mockAuthService.withdraw).toHaveBeenCalledWith('google', 'google-user-123');
       expect(mockResponse.clearCookie).toHaveBeenCalledWith(
         'accessToken',
         expect.objectContaining({ httpOnly: true }),

@@ -8,17 +8,23 @@
 
 [![프로프트 시연 영상](https://img.youtube.com/vi/Ip2T3xFEeJY/0.jpg)](https://www.youtube.com/watch?v=Ip2T3xFEeJY)
 
-[프로프트 사용해보기](https://www.propt.site/) | [프론트엔드 레포지토리](https://github.com/HwangGoeun/propt-frontend) | [백엔드 레포지토리](https://github.com/HwangGoeun/propt-backend)
+👆 위 영상을 통해 프로프트에 대해 알아보세요!
+
+[프로프트 사용해보기](https://www.propt.site/) | [프론트엔드 레포지토리](https://github.com/HwangGoeun/propt-frontend) | [백엔드 레포지토리](https://github.com/HwangGoeun/propt-backend) | [업데이트 내역](https://github.com/HwangGoeun/propt-backend/pulls?q=is%3Apr+is%3Aclosed)
 </div>
 
 <br>
 
 ## 목차
 
+- [시스템 아키텍처](#시스템-아키텍처)
 - [기술 스택](#기술-스택)
   - [Frontend](#frontend)
   - [Backend](#backend)
-- [Challenges](#challenges)
+  - [기술 스택 선정 이유](#기술-스택-선정-이유)
+- [빠른 시작](#빠른-시작)
+- [MCP 연결 방법](#mcp-연결-방법)
+- [구현하면서 어려웠던 것들](#구현하면서-어려웠던-것들)
   - [AI Agent ↔ MCP ↔ Web 간 사용자 인증 절차](#ai-agent--mcp--web-간-사용자-인증-절차)
     - [표준 OAuth 방식 사용 불가능 문제](#표준-oauth-방식-사용-불가능-문제)
     - [OTP로부터 힌트를 얻다](#otp로부터-힌트를-얻다)
@@ -29,8 +35,18 @@
     - [두 번째 시도: Claude Code의 Task 도구 사용하기](#두-번째-시도-claude-code의-task-도구-사용하기)
     - [Claude 내장 기능을 사용한다면, Propt의 가치는 무엇일까?](#claude-내장-기능을-사용한다면-propt의-가치는-무엇일까)
 - [프로젝트 소감](#프로젝트-소감)
+- [문서](#문서)
 
 <br>
+<br>
+
+# 시스템 아키텍처
+
+<img src="./images/system-architecture.png" alt="시스템 아키텍처">
+
+<br>
+
+---
 <br>
 
 # 기술 스택
@@ -68,10 +84,126 @@
 
 <br>
 
+## 기술 스택 선정 이유
+
+<details>
+<summary><b>Zustand — 클라이언트 상태 관리</b></summary>
+
+<br>
+
+프로프트의 프론트엔드는 **템플릿 편집 상태**(현재 선택된 템플릿, 편집 중 데이터, 저장 상태)를 여러 컴포넌트에서 공유합니다. 사이드바에서 템플릿을 선택하면 편집기와 미리보기 패널이 동시에 반응해야 합니다.
+
+**왜 Zustand인가**
+
+- **store 외부 접근**: 디바운스 기반 자동 저장 로직에서 React 컴포넌트 바깥(setTimeout 콜백)에서 최신 상태를 읽어야 합니다. Zustand의 `getState()`로 구독 없이 직접 접근이 가능합니다.
+- **최소한의 보일러플레이트**: Redux는 action, reducer, selector를 분리해야 하지만, Zustand는 하나의 store 파일에서 상태와 액션을 함께 정의합니다. 4주 개발 기간에서 설정 비용을 줄였습니다.
+- **선택적 리렌더링**: `useTemplateStore(state => state.saveStatus)`처럼 selector로 필요한 상태만 구독하여, 편집 중 불필요한 사이드바 리렌더링을 방지합니다.
+
+</details>
+
+<details>
+<summary><b>TanStack Query — 서버 상태 관리</b></summary>
+
+<br>
+
+템플릿 목록 조회, 생성, 수정, 삭제 등 **서버 데이터의 동기화**가 핵심입니다. 클라이언트 상태(Zustand)와 서버 상태의 관심사를 분리해야 했습니다.
+
+**왜 TanStack Query인가**
+
+- **캐싱과 자동 재검증**: 템플릿 목록을 한 번 조회하면 캐싱되고, 수정(mutation) 후 `invalidateQueries`로 자동 갱신됩니다. 직접 캐시 로직을 구현할 필요가 없습니다.
+- **낙관적 업데이트**: 템플릿 저장 시 서버 응답을 기다리지 않고 UI를 먼저 업데이트하여, "저장 중 → 저장 완료" 같은 즉각적인 피드백을 선언적으로 구현합니다.
+- **로딩/에러 상태 자동 관리**: `isLoading`, `isError` 플래그를 직접 관리하는 대신, 훅 하나로 비동기 상태를 처리합니다.
+
+</details>
+
+<details>
+<summary><b>MCP SDK — Claude Desktop 연동</b></summary>
+
+<br>
+
+프로프트의 핵심 기능은 Claude Desktop에서 템플릿을 직접 호출하는 것입니다. 이를 위해 **Model Context Protocol(MCP)**로 Claude와 통신해야 합니다.
+
+**왜 MCP SDK인가**
+
+- **공식 프로토콜 구현체**: Anthropic이 제공하는 공식 TypeScript SDK로, 프로토콜 스펙 변경에 즉시 대응됩니다. 직접 구현 대비 유지보수 비용이 낮습니다.
+- **이중 전송 지원**: Stdio(Claude Desktop 로컬 실행)와 SSE(Claude Web 원격 실행) 두 방식을 모두 지원합니다. 동일한 도구 로직으로 두 환경을 커버하여, 도구 코드를 중복 작성하지 않습니다.
+- **도구 등록 API**: `server.tool(name, schema, handler)` 형태로 MCP 도구를 선언적으로 등록합니다. Zod 스키마로 입력 검증까지 통합되어, 도구 추가 시 핸들러 함수만 작성하면 됩니다.
+
+</details>
+
+<br>
+
 ---
 <br>
 
-# Challenges
+# 빠른 시작
+
+### 사전 요구사항
+
+- Node.js 18.0.0 이상, npm, PostgreSQL, Google OAuth 자격증명
+
+### 백엔드
+
+```bash
+cd propt-backend
+npm install
+cp .env.example .env    # 환경 변수 설정 (상세: docs/setup-guide.md)
+npx prisma migrate dev
+npm run start:dev       # http://localhost:3000
+```
+
+### 프론트엔드
+
+```bash
+cd propt-frontend
+npm install
+cp .env.exmaple .env    # VITE_SERVER_URL=http://localhost:3000
+npm run dev             # http://localhost:5173
+```
+
+> 환경 변수, Docker, 스크립트 목록 등 상세 내용은 [실행 가이드](docs/setup-guide.md)를 참고하세요.
+
+<br>
+
+---
+<br>
+
+# MCP 연결 방법
+
+### Claude Web (claude.ai)
+
+> Pro, Max, Team, Enterprise 플랜 전용
+
+1. [Claude Web](https://claude.ai) → 프로필 → **설정** → **커넥터** 탭
+2. **커스텀 커넥터 추가** → 이름: `프로프트`, URL: `https://api.propt.site/mcp/sse`
+3. 채팅창 **+** 버튼 → **커넥터** → 프로프트 토글 켜기
+4. **프로프트 로그인** 입력하면 사용 준비 완료!
+
+### Claude Code / Claude Desktop
+
+설정 파일에 다음 JSON을 추가합니다:
+
+```json
+{
+  "mcpServers": {
+    "propt": {
+      "url": "https://api.propt.site/mcp/sse"
+    }
+  }
+}
+```
+
+- Claude Code: `~/.claude/settings.json` → `claude /restart`
+- Claude Desktop (macOS): `~/Library/Application Support/Claude/claude_desktop_config.json` → `Cmd + Q` 후 재실행
+
+**프로프트 로그인** 입력하면 사용 준비 완료!
+
+<br>
+
+---
+<br>
+
+# 구현하면서 어려웠던 것들
 ## AI Agent ↔ MCP ↔ Web 간 사용자 인증 절차
 프로프트는 웹에서 작성해놓은 프롬프트를 AI 에이전트에서 사용할 수 있도록 해주는 MCP입니다.
 따라서, 사용자가 작성한 프롬프트만 사용할 수 있도록 하기 위해 MCP에서도 로그인과 같은 인증 과정을 거쳐야 합니다.
@@ -298,3 +430,17 @@ Propt는 Headless 모드를 쉽게 사용할 수 있도록 도와줍니다.
 그와 동시에 MCP라는 중간 연결 다리를 통해 AI agent - 웹이라는 두 가지 환경에서 서비스를 제공하고 있어서, 각 플랫폼 간 사용자 경험을 자연스럽게 연결시키려는 고민도 많이 했습니다.
 
 단순히 '안된다', 혹은 '여러 시도를 해봐야지'보다는, 프롬프팅 관련 공식 문서나 논문을 찾아보며 LLM의 원리를 이해하고 활용하려는 시도가 원하는 결과물을 만들어 내는 데에 도움을 줬던 것 같습니다.
+
+<br>
+
+---
+<br>
+
+# 문서
+
+| 문서 | 설명 |
+|------|------|
+| [실행 가이드](docs/setup-guide.md) | 상세 실행 방법, 환경 변수, Docker, MCP 설정 |
+| [API 명세](docs/api-reference.md) | 전체 엔드포인트 + MCP 도구 |
+| [아키텍처](docs/architecture.md) | ERD, 테이블 상세, 시스템 아키텍처 |
+| [폴더 구조](docs/folder-structure.md) | 프론트엔드/백엔드 디렉터리 상세 |

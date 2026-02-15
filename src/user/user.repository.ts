@@ -47,4 +47,10 @@ export class UserRepository {
       data: { hasCompletedOnboarding: completed },
     });
   }
+
+  async deleteUser(id: string) {
+    await this.prisma.user.delete({
+      where: { id },
+    });
+  }
 }
